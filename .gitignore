@@ -1,0 +1,14 @@
+# Obsidian settings (Tom's note-viewer config, not part of the app)
+.obsidian/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Big generated stuff stays out of git
+outputs/
+checkpoints/
+renders/
+*.mp4
+*.npz

@@ -1,0 +1,4 @@
+# Rupert Sim - Python packages.
+# The versions are not pinned yet; we pin them once a full training run works.
+mujoco
+playground
