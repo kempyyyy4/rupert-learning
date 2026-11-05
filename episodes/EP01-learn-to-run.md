@@ -13,7 +13,7 @@ Rupert goes from collapsing to running, ending on his first 100m time trial. The
 - [ ] Total cloud spend is under £15
 
 ## Build steps
-1. ~~Set up the GitHub repo and the app skeleton~~ (done 2026-11-05; Tom still to confirm the viewer window)
+1. ~~Set up the GitHub repo and the app skeleton~~ (done 2026-11-05; Tom confirmed install check and humanoid viewer work)
 2. Get the humanoid training in free Google Colab to prove the code works end to end
 3. Run the full training on a rented GPU, saving checkpoints
 4. Run the moment-finder and pick the stages
