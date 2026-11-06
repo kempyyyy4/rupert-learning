@@ -24,4 +24,5 @@
 
 ## What to change next time (done for EXP-006)
 - Learning rate 1e-3 → 3e-4, and gradient cap max_grad_norm = 1.0.
+- Knees (Tom spotted it): measured at 345M, right knee bends at most 51°, left only 12°, and both push past straight (+17° / +7°). Added the `knees` reward (scoring v4).
 - Next: decide whether the 345M gait is good enough for EP01, or rerun with the stable settings to get a smoother, faster gait.

@@ -17,6 +17,8 @@ Scoring (all per control step, 50 times a second). Weights are in REWARD_WEIGHTS
   - jerk          : sudden changes in muscle commands (jitter)
   - lane          : drifting sideways out of the lane, and sideways speed
   - arms          : a hand held far in front of / behind the chest (v2 ran with a 'zombie arm')
+  + knees         : swinging leg's knee bent (up to ~90 deg), minus a penalty for locking a
+                    knee past straight. v3 (run rupert_20261106_2220) ran on near-straight legs.
 The attempt ENDS if he falls (head below FALL_HEAD_HEIGHT_M).
 
 Muscles: each joint has a peak torque (rupert/body.py), and like real muscle it
@@ -51,7 +53,12 @@ REWARD_WEIGHTS = dict(
     jerk=-0.1,
     lane=-0.3,
     arms=-1.0,
+    knees=0.3,
 )
+# EXP-005 ran with near-straight legs (left knee bent only 12 deg, both pushed past straight).
+# Real runners fold the swinging knee to ~90 deg or more.
+KNEE_SWING_TARGET_RAD = 1.6   # ~90 deg: full credit for this much bend while the foot is in the air
+KNEE_ORDER = ("right_knee", "left_knee")   # same order as FOOT_GEOMS
 HAND_REACH_M = 0.35   # hands further than this in front of / behind the chest are penalised
 
 # rad/s at which a joint's torque drops to zero (concentric). TO VERIFY against sources.
@@ -112,6 +119,7 @@ class RupertRun(mjx_env.MjxEnv):
             MAX_JOINT_SPEED.get(_joint_key(m.joint(j).name), MAX_JOINT_SPEED["default"]) for j in joint_ids
         ])
         self._qpos0 = jp.array(m.qpos0)
+        self._knee_qpos = jp.array([m.jnt_qposadr[m.joint(j).id] for j in KNEE_ORDER])
 
     # ------------------------------------------------------------------ reset
     def reset(self, rng: jax.Array) -> mjx_env.State:
@@ -206,6 +214,9 @@ class RupertRun(mjx_env.MjxEnv):
         parts["lane"] = jp.abs(vel[1]) + jp.clip(jp.abs(y) - LANE_HALF_WIDTH_M, 0.0, None) * 5.0
         hands_fwd = ((data.xpos[self._hand_ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
         parts["arms"] = jp.sum(jp.clip(jp.abs(hands_fwd) - HAND_REACH_M, 0.0, None))
+        knee = data.qpos[self._knee_qpos]   # 0 = straight, negative = bent
+        bend = jp.clip(-knee, 0.0, KNEE_SWING_TARGET_RAD) / KNEE_SWING_TARGET_RAD
+        parts["knees"] = jp.sum(jp.where(contact, 0.0, bend)) - 3.0 * jp.sum(jp.clip(knee, 0.0, None))
 
         reward = sum(REWARD_WEIGHTS[k] * v for k, v in parts.items())
         return reward, parts, info
