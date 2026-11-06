@@ -57,3 +57,7 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 **Replay file (.npz)** — The position and rotation of every body part on every frame of an attempt. Blender uses it to animate Rupert's 3D model.
 
 **Style judge (AMP)** — An optional extra AI that scores how human a movement looks, trained on real running footage. Not used for now.
+
+- **Learning rate**: how big a change the AI makes to its brain after each batch of practice. Too big and it can 'forget' everything in one bad update (what happened in EXP-005); too small and learning is slow.
+- **Training collapse**: when the score suddenly crashes and never comes back, because one bad update broke the brain. Different from reward hacking, where the score goes *up* for the wrong behaviour.
+- **Gradient clipping**: a safety cap on how much one update can change the brain.

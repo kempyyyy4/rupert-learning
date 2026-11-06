@@ -3,6 +3,7 @@
 Newest first. Each entry: what we decided, and why.
 
 ## 2026-11-07
+- **Stabler training after EXP-005.** Scoring v3 worked: at 345M steps Rupert ran with a real stride (100 m in 15.2 s). Then the learning collapsed for good. Learning rate is now 3e-4 (was 1e-3), with a cap on how big each update can be (gradient clipping, 1.0). Slower but safer; the collapse cost us 650M wasted steps.
 - **Scoring v3 after EXP-004** (stiff-legged bouncing): strides scored by distance each foot travels, relaxed 'tall' range, arm penalty. Next run is full length (1B steps) because a 4090 does it in ~85 min for well under £2.
 - **Cloud installs use exact versions** (`requirements-lock.txt`, frozen from Tom's working PC, Python 3.14, installed without re-solving). First RunPod attempt installed MuJoCo 4.0 and a broken Playground when asked for "latest". Cost: a few pence.
 - **Moved test runs to RunPod** after Colab's free GPU limit blocked us (Tom's choice over waiting a day). $10 prepaid credit, auto-pay OFF, Community Cloud RTX 4090 (~$0.34/h). Guide: `docs/runpod-guide.md`.

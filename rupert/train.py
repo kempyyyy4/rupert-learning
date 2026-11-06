@@ -39,6 +39,10 @@ def ppo_config(task):
     # Playground's value (10) makes Brax round each check-in up to ~9.8M steps,
     # which is why the first Colab run did 88M steps instead of 20M.
     cfg.num_resets_per_eval = 1
+    # Stability for long runs: at Playground's 1e-3 with no cap, run rupert_20261106_2220
+    # peaked at 345M steps (15.1 s 100 m) then one bad update wrecked it for good.
+    cfg.learning_rate = 3e-4
+    cfg.max_grad_norm = 1.0
     return cfg
 
 

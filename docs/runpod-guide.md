@@ -23,8 +23,9 @@
 8. In Jupyter: **File > New > Terminal**.
 9. Copy this whole line, paste it into the terminal (right-click > Paste, or Ctrl+Shift+V) and press Enter:
    ```
-   mkdir -p /workspace && cd /workspace && wget -qO runpod_train.sh https://raw.githubusercontent.com/kempyyyy4/rupert-learning/main/cloud/runpod_train.sh && bash runpod_train.sh 100000000
+   mkdir -p /workspace && cd /workspace && wget -qO runpod_train.sh https://raw.githubusercontent.com/kempyyyy4/rupert-learning/main/cloud/runpod_train.sh && bash runpod_train.sh 1000000000 3
    ```
+   (The number is training steps: 1000000000 = full run, about 1½–2 hours; the 3 is a 3-hour safety limit.)
 10. Text will start scrolling. **You can close the tab; it keeps running.** To check on it later, reopen Jupyter; the log is the `rupert_....log` file in the file list.
 11. When it finishes you'll see a big box of `#####` saying **DOWNLOAD NOW**.
 12. In Jupyter's file list on the left, click the refresh icon, right-click **rupert_results_....zip**, then **Download**.
