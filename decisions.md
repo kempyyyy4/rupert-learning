@@ -2,6 +2,11 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-07
+- **Scoring v2 after EXP-003.** v1 learned to finish 100 m (19.2 s) but as a hunched, tiny-step shuffle. Speed now only counts fully when running tall, the fall line is higher (1.2 m), strides need a real swing (≥0.25 s), and upright checks the pelvis too.
+- **Bigger brain:** policy 256-256-128, value 256×3 (was 4×32). Stored in each run's config.json so old runs still replay.
+- **Throughput measured:** T4 ≈ 38,000 steps/s on the Rupert setup.
+
 ## 2026-11-06
 - **Bolt race deprioritised.** Tom feels the Bolt angle is a bit played out. Focus on EP01 (learn to run); decide EP02's angle after the first video. Fair-start/timing issues vs Bolt are parked.
 - **Reviewed the stock setup and rebuilt it before any paid training** (Tom agreed all fixes). The stock score (~138) matched "standing upright, barely moving", not running.

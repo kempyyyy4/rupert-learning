@@ -3,12 +3,15 @@
 Track: start line at x = 0, running towards +x, lane centred on y = 0.
 
 Scoring (all per control step, 50 times a second). Weights are in REWARD_WEIGHTS.
-  + forward_speed : forward speed along the track in m/s, capped at SPEED_CAP_MS
+  + forward_speed : forward speed along the track in m/s, capped at SPEED_CAP_MS,
+                    multiplied by a posture factor: full credit only when running TALL
+                    (head near standing height). Added after colab_run3 learned a hunched shuffle.
   + alive         : small bonus for every moment he is still up
-  + upright       : keeps the chest level (1 = perfectly upright)
+  + upright       : chest AND pelvis upright (1 = perfectly upright)
   + heading       : facing down the track
-  + stride        : reward when a foot lands after time in the air, only if it's
-                    the OTHER foot from the last landing (alternating steps)
+  + stride        : reward when a foot lands after a proper swing (MIN_AIR_TIME_S+),
+                    only if it's the OTHER foot from the last landing (alternating steps).
+                    Long swings = long strides; colab_run3 took 6.7 tiny steps a second.
   - energy        : mechanical power used by the muscles, per kg (wasted effort = weird gaits)
   - jerk          : sudden changes in muscle commands (jitter)
   - lane          : drifting sideways out of the lane, and sideways speed
@@ -32,7 +35,8 @@ from mujoco_playground._src.dm_control_suite import common
 XML_PATH = Path(__file__).parent / "assets" / "rupert.xml"
 
 SPEED_CAP_MS = 12.5       # Bolt's peak was ~12.4 m/s; no extra credit beyond this
-FALL_HEAD_HEIGHT_M = 1.0  # standing head height is ~1.75 m
+FALL_HEAD_HEIGHT_M = 1.2  # standing head height is ~1.75 m
+TALL_HEAD_HEIGHT_M = (1.35, 1.65)  # posture factor goes from 0.3 at the low end to 1.0 at the high end
 LANE_HALF_WIDTH_M = 0.61  # standard lane is 1.22 m wide
 
 REWARD_WEIGHTS = dict(
@@ -50,7 +54,8 @@ REWARD_WEIGHTS = dict(
 MAX_JOINT_SPEED = {"hip_y": 25.0, "knee": 35.0, "ankle_y": 35.0, "default": 20.0}
 
 FOOT_GEOMS = (("right_right_foot", "left_right_foot"), ("left_left_foot", "right_left_foot"))
-MIN_AIR_TIME_S = 0.08
+MIN_AIR_TIME_S = 0.25   # a running foot swings ~0.3-0.5 s; shuffling steps swing far less
+MAX_AIR_CREDIT_S = 0.25
 
 
 def default_config() -> config_dict.ConfigDict:
@@ -88,6 +93,7 @@ class RupertRun(mjx_env.MjxEnv):
         m = self._mj_model
         self._head_id = m.body("head").id
         self._torso_id = m.body("torso").id
+        self._pelvis_id = m.body("pelvis").id
         self._extremity_ids = jp.array([m.body(s + l).id for s in ("left_", "right_") for l in ("hand", "foot")])
         self._foot_geom_ids = jp.array([[m.geom(g).id for g in pair] for pair in FOOT_GEOMS])
         self._foot_radius = float(m.geom_size[m.geom(FOOT_GEOMS[0][0]).id][0])
@@ -164,9 +170,12 @@ class RupertRun(mjx_env.MjxEnv):
         vel = self._com_vel(data)
         torso = data.xmat[self._torso_id]
         parts = {}
-        parts["forward_speed"] = jp.clip(vel[0], -2.0, SPEED_CAP_MS)
+        lo, hi = TALL_HEAD_HEIGHT_M
+        tall = jp.clip((self._head_height(data) - lo) / (hi - lo), 0.0, 1.0)
+        posture = 0.3 + 0.7 * tall
+        parts["forward_speed"] = jp.clip(vel[0], -2.0, SPEED_CAP_MS) * posture
         parts["alive"] = jp.array(1.0)
-        parts["upright"] = torso[2, 2]
+        parts["upright"] = 0.5 * (torso[2, 2] + data.xmat[self._pelvis_id][2, 2])
         parts["heading"] = torso[0, 0]   # torso's forward axis pointing down the track (+x)
 
         # Strides: foot touchdown after time in the air, alternating feet.
@@ -175,7 +184,7 @@ class RupertRun(mjx_env.MjxEnv):
         touchdown = contact & (air > 0)
         foot_idx = jp.arange(2.0)
         alternating = foot_idx != info["last_foot"]
-        stride = jp.sum(jp.where(touchdown & alternating, jp.clip(air - MIN_AIR_TIME_S, 0.0, 0.4), 0.0))
+        stride = jp.sum(jp.where(touchdown & alternating, jp.clip(air - MIN_AIR_TIME_S, 0.0, MAX_AIR_CREDIT_S), 0.0))
         parts["stride"] = stride
         info["last_foot"] = jp.where(touchdown.any(), jp.argmax(touchdown).astype(float), info["last_foot"])
         info["air_time"] = jp.where(contact, 0.0, air + self.dt)

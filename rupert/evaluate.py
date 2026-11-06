@@ -23,15 +23,14 @@ from brax.training.acme import running_statistics
 from brax.training.agents.ppo import networks as ppo_networks
 
 from rupert import env as rupert_env
+from rupert import networks
 
 TRACK_LENGTH_M = 100.0
 TOP_SPEED_WINDOW_S = 0.5   # top speed = best average speed over half a second (ignores twitches)
 
 
-def make_rollout(env, n_attempts, n_steps):
-    nets = ppo_networks.make_ppo_networks(
-        env.observation_size, env.action_size, preprocess_observations_fn=running_statistics.normalize)
-    make_policy = ppo_networks.make_inference_fn(nets)
+def make_rollout(env, n_attempts, n_steps, run_dir):
+    make_policy = networks.make_policy_fn(env, run_dir)
 
     @jax.jit
     def rollout(brain, rng):
@@ -114,7 +113,7 @@ def main():
     out.mkdir(exist_ok=True)
     env = rupert_env.load(args.task, {"episode_length": int(args.seconds / 0.02)})
     n_steps = int(args.seconds / env.dt)
-    rollout = make_rollout(env, args.attempts, n_steps)
+    rollout = make_rollout(env, args.attempts, n_steps, run)
     body_names = [env.mj_model.body(b).name for b in range(env.mj_model.nbody)]
 
     ckpts = [Path(args.checkpoint)] if args.checkpoint else \

@@ -28,6 +28,7 @@ from ml_collections import config_dict
 from mujoco_playground import wrapper
 
 from rupert import env as rupert_env
+from rupert import networks
 
 
 def ppo_config(task):
@@ -46,11 +47,15 @@ def steps_per_checkin(cfg):
 
 
 def plan_phase(cfg, steps, n_checkins):
-    """Brax rounds up to whole training chunks; work out what it will really do."""
+    """Brax rounds up to whole training chunks; pick numbers it won't round up.
+
+    (colab_run3 asked for 100M and got 118M because of this rounding.)
+    """
     chunk = steps_per_checkin(cfg)
-    n_checkins = max(1, min(n_checkins, math.ceil(steps / chunk)))
-    per = math.ceil(steps / (n_checkins * chunk)) * chunk
-    return {"num_evals": n_checkins + 1, "num_timesteps": steps, "real_steps": per * n_checkins, "steps_per_checkin": per}
+    chunks_per = max(1, round(steps / max(n_checkins, 1) / chunk))
+    n_checkins = max(1, round(steps / (chunks_per * chunk)))
+    per = chunks_per * chunk
+    return {"num_evals": n_checkins + 1, "num_timesteps": per * n_checkins, "real_steps": per * n_checkins, "steps_per_checkin": per}
 
 
 def main():
@@ -86,7 +91,7 @@ def main():
         print(f"  phase {name}: {p['real_steps']:,} steps, checkpoint every {p['steps_per_checkin']:,}")
     (out / "config.json").write_text(json.dumps({
         "task": args.task, "seed": args.seed, "requested_steps": args.steps, "real_total_steps": total,
-        "phases": dict(phases), "ppo": cfg.to_dict(),
+        "phases": dict(phases), "ppo": cfg.to_dict(), "network": networks.DEFAULT_SIZES,
         "env": rupert_env.default_config().to_dict() if args.task == "Rupert100m" else None,
         "reward_weights": rupert_env.REWARD_WEIGHTS if args.task == "Rupert100m" else None,
     }, indent=1, default=str))
@@ -124,7 +129,7 @@ def main():
             environment=rupert_env.load(args.task, env_overrides),
             eval_env=rupert_env.load(args.task, env_overrides),
             wrap_env_fn=wrapper.wrap_for_brax_training,
-            network_factory=ppo_networks.make_ppo_networks,
+            network_factory=networks.factory(),
             progress_fn=functools.partial(progress, phase=name),
             policy_params_fn=functools.partial(save_checkpoint, phase=name),
             restore_params=restore,
