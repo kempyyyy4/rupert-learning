@@ -2,6 +2,9 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-06
+- **JAX is pinned to 0.9.2.** The newest JAX (0.12) breaks Brax's PPO trainer. Revisit when Brax is updated.
+
 ## 2026-11-05
 - **GitHub repo is `kempyyyy4/rupert-learning`.** Notes and code live together; `.obsidian/` is ignored so Tom's viewer settings stay private.
 - **App runs in a private Python workspace (`.venv`) on Python 3.14.** Keeps the project's packages separate from the rest of the PC. Python 3.15 also works but is newer and riskier.

@@ -1,4 +1,6 @@
 # Rupert Sim - Python packages.
-# The versions are not pinned yet; we pin them once a full training run works.
+# jax is pinned: newer versions (0.10+) break the PPO trainer (brax) as of 2026-11-06.
+jax==0.9.2
+jaxlib==0.9.2
 mujoco
 playground

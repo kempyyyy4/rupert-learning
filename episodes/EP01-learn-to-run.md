@@ -21,7 +21,7 @@ Rupert goes from collapsing to running, ending on his first 100m time trial. The
 6. Tom watches and decides whether it's a video
 
 ## Experiments
-- 
+- EXP-001: local smoke test, pipeline works (CPU, 17 min)
 
 ## Story beats (fill in as clips come in)
 - 
