@@ -3,6 +3,8 @@
 Newest first. Each entry: what we decided, and why.
 
 ## 2026-11-07
+- **Moved test runs to RunPod** after Colab's free GPU limit blocked us (Tom's choice over waiting a day). $10 prepaid credit, auto-pay OFF, Community Cloud RTX 4090 (~$0.34/h). Guide: `docs/runpod-guide.md`.
+- **Cloud script safety:** runs in the background; refuses machines without a CUDA 13 driver (the physics engine would silently fall back to CPU and burn money); hard time limit; zips results for download in Jupyter; then deletes the pod after a 45-min download window (15 min after a failure). Tom always checks the Pods page is empty.
 - **Scoring v2 after EXP-003.** v1 learned to finish 100 m (19.2 s) but as a hunched, tiny-step shuffle. Speed now only counts fully when running tall, the fall line is higher (1.2 m), strides need a real swing (≥0.25 s), and upright checks the pelvis too.
 - **Bigger brain:** policy 256-256-128, value 256×3 (was 4×32). Stored in each run's config.json so old runs still replay.
 - **Throughput measured:** T4 ≈ 38,000 steps/s on the Rupert setup.
@@ -41,5 +43,5 @@ Newest first. Each entry: what we decided, and why.
 - [ ] Tom signs off the plan and Milestone 1
 - [ ] Final check of Rupert's look before modelling
 - [x] GitHub repo name (rupert-learning)
-- [ ] RunPod account + £10 credit (Tom, when we reach the training step)
+- [ ] RunPod account + $10 credit, auto-pay off (Tom, 2026-11-07, in progress)
 - [ ] Blender installed on the PC
