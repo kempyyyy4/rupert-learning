@@ -37,9 +37,9 @@ LANE_HALF_WIDTH_M = 0.61  # standard lane is 1.22 m wide
 
 REWARD_WEIGHTS = dict(
     forward_speed=0.25,
-    alive=0.5,
-    upright=0.2,
-    heading=0.2,
+    alive=0.2,     # kept small: big "just stay up" bonuses teach standing still (the stock setup's trap)
+    upright=0.1,
+    heading=0.1,
     stride=1.0,
     energy=-0.004,
     jerk=-0.1,
@@ -121,7 +121,7 @@ class RupertRun(mjx_env.MjxEnv):
         }
         metrics = {k: jp.zeros(()) for k in (
             *(f"reward/{w}" for w in REWARD_WEIGHTS),
-            "distance_m", "time_upright_s", "top_speed_ms")}
+            "distance_m", "time_upright_s")}
         obs = self._get_obs(data, info)
         return mjx_env.State(data, obs, jp.zeros(()), jp.zeros(()), metrics, info)
 
@@ -153,7 +153,6 @@ class RupertRun(mjx_env.MjxEnv):
         vx = self._com_vel(data)[0]
         metrics["distance_m"] = vx * self.dt            # summed over an attempt = distance
         metrics["time_upright_s"] = jp.array(self.dt)   # summed = time before falling
-        metrics["top_speed_ms"] = vx                    # brax averages; true top speed is in evaluate.py
         info["last_action"] = action
 
         obs = self._get_obs(data, info)
