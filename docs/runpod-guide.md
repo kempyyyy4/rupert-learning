@@ -16,14 +16,14 @@
 1. Click **Pods** on the left, then **Deploy** (or **+ Deploy**).
 2. Pick **Community Cloud** (cheaper).
 3. Find the **filter for CUDA version** and choose **13.0** (or the highest offered). *If you skip this, the script will refuse to run on an old machine and stop within minutes. That costs pennies but wastes your time.*
-4. Choose **RTX 4090**. If none are available, an **RTX 5090** or **L40S** also works but costs more. Check the hourly price shown.
-5. Template: anything called **RunPod PyTorch** (it includes "Jupyter"). Leave the disk sizes as they are.
+4. Choose the cheapest **available** of: RTX 5090, RTX 4090, L40S, RTX 6000 Ada, RTX 3090, A5000, A6000 (ideally under ~$0.80/h). **Never click "Deploy when available"**: it starts a machine later, unattended, and bills while idle.
+5. Template: **PyTorch 2.8.0** (any RunPod PyTorch template; it includes Jupyter). Ignore "Nothing mounted… Add volume": **don't add a volume**, it bills monthly even after the pod is gone.
 6. Make sure it says **On-Demand** (not Spot/Interruptible), then click **Deploy**.
 7. Wait until the pod shows **Running** (a minute or two). Click **Connect**, then **Jupyter Lab** (or "Connect to HTTP Service [Port 8888]").
 8. In Jupyter: **File > New > Terminal**.
 9. Copy this whole line, paste it into the terminal (right-click > Paste, or Ctrl+Shift+V) and press Enter:
    ```
-   cd /workspace && wget -qO runpod_train.sh https://raw.githubusercontent.com/kempyyyy4/rupert-learning/main/cloud/runpod_train.sh && bash runpod_train.sh 100000000
+   mkdir -p /workspace && cd /workspace && wget -qO runpod_train.sh https://raw.githubusercontent.com/kempyyyy4/rupert-learning/main/cloud/runpod_train.sh && bash runpod_train.sh 100000000
    ```
 10. Text will start scrolling. **You can close the tab; it keeps running.** To check on it later, reopen Jupyter; the log is the `rupert_....log` file in the file list.
 11. When it finishes you'll see a big box of `#####` saying **DOWNLOAD NOW**.

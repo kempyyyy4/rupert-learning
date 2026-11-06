@@ -2,7 +2,7 @@
 # Rupert Sim: training run on a rented RunPod GPU.
 #
 # Tom pastes ONE line into the pod's web terminal (see docs/runpod-guide.md):
-#   cd /workspace && wget -qO runpod_train.sh https://raw.githubusercontent.com/kempyyyy4/rupert-learning/main/cloud/runpod_train.sh && bash runpod_train.sh 100000000
+#   mkdir -p /workspace && cd /workspace && wget -qO runpod_train.sh https://raw.githubusercontent.com/kempyyyy4/rupert-learning/main/cloud/runpod_train.sh && bash runpod_train.sh 100000000
 #
 # Arguments (all optional):  [steps]  [max_training_hours]  [download_window_minutes]
 #
