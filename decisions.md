@@ -3,6 +3,7 @@
 Newest first. Each entry: what we decided, and why.
 
 ## 2026-11-07
+- **Cloud installs use exact versions** (`requirements-lock.txt`, frozen from Tom's working PC, Python 3.14, installed without re-solving). First RunPod attempt installed MuJoCo 4.0 and a broken Playground when asked for "latest". Cost: a few pence.
 - **Moved test runs to RunPod** after Colab's free GPU limit blocked us (Tom's choice over waiting a day). $10 prepaid credit, auto-pay OFF, Community Cloud RTX 4090 (~$0.34/h). Guide: `docs/runpod-guide.md`.
 - **Cloud script safety:** runs in the background; refuses machines without a CUDA 13 driver (the physics engine would silently fall back to CPU and burn money); hard time limit; zips results for download in Jupyter; then deletes the pod after a 45-min download window (15 min after a failure). Tom always checks the Pods page is empty.
 - **Scoring v2 after EXP-003.** v1 learned to finish 100 m (19.2 s) but as a hunched, tiny-step shuffle. Speed now only counts fully when running tall, the fall line is higher (1.2 m), strides need a real swing (≥0.25 s), and upright checks the pelvis too.

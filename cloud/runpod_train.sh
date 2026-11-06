@@ -83,10 +83,13 @@ cd /root
 rm -rf rupert-learning
 git clone -q https://github.com/kempyyyy4/rupert-learning.git && cd rupert-learning || exit 1
 pip install -q uv
-uv venv -q -p 3.12 /root/venv || exit 1
+uv venv -q -p 3.14 /root/venv || exit 1   # same Python as Tom's PC
 PY=/root/venv/bin/python
-uv pip install -q -p "$PY" "jax[cuda12]==0.9.2" mujoco playground imageio-ffmpeg || exit 1
-"$PY" -m rupert.check_install
+# GPU version of JAX first, then the EXACT versions from Tom's PC with no re-solving.
+# (Letting it pick "latest" gave MuJoCo 4.0 and a broken Playground on 2026-11-06.)
+uv pip install -q -p "$PY" "jax[cuda12]==0.9.2" || exit 1
+uv pip install -q -p "$PY" --no-deps -r requirements-lock.txt || exit 1
+"$PY" -m rupert.check_install || { echo "Install check failed. Stopping."; exit 1; }
 
 "$PY" - <<'EOF' || { echo "GPU physics check failed. Stopping."; exit 1; }
 import jax, warp as wp

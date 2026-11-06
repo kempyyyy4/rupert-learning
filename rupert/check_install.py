@@ -58,6 +58,7 @@ def main():
 
     results.append(try_step("Rupert", rupert_step))
     print("ALL GOOD" if all(results) else "SOME THINGS FAILED (see [FAIL] lines above)")
+    sys.exit(0 if all(results) else 1)
 
 
 if __name__ == "__main__":
