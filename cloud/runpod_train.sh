@@ -99,7 +99,7 @@ assert wp.is_cuda_available(), "Warp (the physics engine) sees no GPU"
 print("GPU check passed:", jax.devices())
 EOF
 
-timeout "${MAX_HOURS}h" "$PY" -m rupert.train --steps "$STEPS" --early-steps 30000000 --main-checkpoints 20 --out "$OUT"
+timeout "${MAX_HOURS}h" "$PY" -m rupert.train --steps "$STEPS" --early-steps 40000000 --main-checkpoints 100 --out "$OUT"
 TRAIN_EXIT=$?
 [ $TRAIN_EXIT -eq 124 ] && echo "Hit the ${MAX_HOURS}h time limit; keeping what was saved."
 timeout 1h "$PY" -m rupert.evaluate --run "$OUT" --every 3 --attempts 8

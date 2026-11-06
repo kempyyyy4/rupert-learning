@@ -9,12 +9,14 @@ Scoring (all per control step, 50 times a second). Weights are in REWARD_WEIGHTS
   + alive         : small bonus for every moment he is still up
   + upright       : chest AND pelvis upright (1 = perfectly upright)
   + heading       : facing down the track
-  + stride        : reward when a foot lands after a proper swing (MIN_AIR_TIME_S+),
-                    only if it's the OTHER foot from the last landing (alternating steps).
-                    Long swings = long strides; colab_run3 took 6.7 tiny steps a second.
+  + stride        : when a foot lands, metres it travelled since it left the ground
+                    (only alternating feet, only after a real swing of MIN_SWING_S+).
+                    Rewards long strides directly. Air-time-based v2 was cheated with
+                    tiny stiff-legged bounces (run rupert_20261106_2121).
   - energy        : mechanical power used by the muscles, per kg (wasted effort = weird gaits)
   - jerk          : sudden changes in muscle commands (jitter)
   - lane          : drifting sideways out of the lane, and sideways speed
+  - arms          : a hand held far in front of / behind the chest (v2 ran with a 'zombie arm')
 The attempt ENDS if he falls (head below FALL_HEAD_HEIGHT_M).
 
 Muscles: each joint has a peak torque (rupert/body.py), and like real muscle it
@@ -36,7 +38,7 @@ XML_PATH = Path(__file__).parent / "assets" / "rupert.xml"
 
 SPEED_CAP_MS = 12.5       # Bolt's peak was ~12.4 m/s; no extra credit beyond this
 FALL_HEAD_HEIGHT_M = 1.2  # standing head height is ~1.75 m
-TALL_HEAD_HEIGHT_M = (1.35, 1.65)  # posture factor goes from 0.3 at the low end to 1.0 at the high end
+TALL_HEAD_HEIGHT_M = (1.40, 1.62)  # v2 used (1.35, 1.65) and ran stiff-legged; real running bobs a little  # posture factor goes from 0.3 at the low end to 1.0 at the high end
 LANE_HALF_WIDTH_M = 0.61  # standard lane is 1.22 m wide
 
 REWARD_WEIGHTS = dict(
@@ -44,18 +46,20 @@ REWARD_WEIGHTS = dict(
     alive=0.2,     # kept small: big "just stay up" bonuses teach standing still (the stock setup's trap)
     upright=0.1,
     heading=0.1,
-    stride=1.0,
+    stride=2.0,
     energy=-0.004,
     jerk=-0.1,
     lane=-0.3,
+    arms=-1.0,
 )
+HAND_REACH_M = 0.35   # hands further than this in front of / behind the chest are penalised
 
 # rad/s at which a joint's torque drops to zero (concentric). TO VERIFY against sources.
 MAX_JOINT_SPEED = {"hip_y": 25.0, "knee": 35.0, "ankle_y": 35.0, "default": 20.0}
 
 FOOT_GEOMS = (("right_right_foot", "left_right_foot"), ("left_left_foot", "right_left_foot"))
-MIN_AIR_TIME_S = 0.25   # a running foot swings ~0.3-0.5 s; shuffling steps swing far less
-MAX_AIR_CREDIT_S = 0.25
+MIN_SWING_S = 0.15     # ignore foot 'chatter' on the ground
+MAX_STRIDE_CREDIT_M = 3.0   # a sprinting foot travels ~4-5 m per swing; 3 m is plenty for now
 
 
 def default_config() -> config_dict.ConfigDict:
@@ -94,6 +98,7 @@ class RupertRun(mjx_env.MjxEnv):
         self._head_id = m.body("head").id
         self._torso_id = m.body("torso").id
         self._pelvis_id = m.body("pelvis").id
+        self._hand_ids = jp.array([m.body("left_hand").id, m.body("right_hand").id])
         self._extremity_ids = jp.array([m.body(s + l).id for s in ("left_", "right_") for l in ("hand", "foot")])
         self._foot_geom_ids = jp.array([[m.geom(g).id for g in pair] for pair in FOOT_GEOMS])
         self._foot_radius = float(m.geom_size[m.geom(FOOT_GEOMS[0][0]).id][0])
@@ -124,6 +129,7 @@ class RupertRun(mjx_env.MjxEnv):
             "last_action": jp.zeros(self.action_size),
             "air_time": jp.zeros(2),
             "last_foot": jp.array(-1.0),
+            "liftoff_x": jp.zeros(2),
         }
         metrics = {k: jp.zeros(()) for k in (
             *(f"reward/{w}" for w in REWARD_WEIGHTS),
@@ -184,8 +190,11 @@ class RupertRun(mjx_env.MjxEnv):
         touchdown = contact & (air > 0)
         foot_idx = jp.arange(2.0)
         alternating = foot_idx != info["last_foot"]
-        stride = jp.sum(jp.where(touchdown & alternating, jp.clip(air - MIN_AIR_TIME_S, 0.0, MAX_AIR_CREDIT_S), 0.0))
-        parts["stride"] = stride
+        foot_x = data.geom_xpos[self._foot_geom_ids[:, 0], 0]
+        travelled = jp.clip(foot_x - info["liftoff_x"], 0.0, MAX_STRIDE_CREDIT_M)
+        parts["stride"] = jp.sum(jp.where(touchdown & alternating & (air >= MIN_SWING_S), travelled, 0.0))
+        liftoff = (~contact) & (air == 0)
+        info["liftoff_x"] = jp.where(liftoff, foot_x, info["liftoff_x"])
         info["last_foot"] = jp.where(touchdown.any(), jp.argmax(touchdown).astype(float), info["last_foot"])
         info["air_time"] = jp.where(contact, 0.0, air + self.dt)
 
@@ -195,6 +204,8 @@ class RupertRun(mjx_env.MjxEnv):
         parts["jerk"] = jp.mean(jp.square(action - info["last_action"]))
         y = data.subtree_com[self._torso_id][1]
         parts["lane"] = jp.abs(vel[1]) + jp.clip(jp.abs(y) - LANE_HALF_WIDTH_M, 0.0, None) * 5.0
+        hands_fwd = ((data.xpos[self._hand_ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
+        parts["arms"] = jp.sum(jp.clip(jp.abs(hands_fwd) - HAND_REACH_M, 0.0, None))
 
         reward = sum(REWARD_WEIGHTS[k] * v for k, v in parts.items())
         return reward, parts, info

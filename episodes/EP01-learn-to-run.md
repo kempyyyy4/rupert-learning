@@ -22,6 +22,7 @@ Rupert goes from collapsing to running, ending on his first 100m time trial. The
 
 ## Experiments
 - EXP-001: local smoke test, pipeline works (CPU, 17 min)
+- EXP-004: first RunPod run (4090, 8.5 min for 100M steps). Upright now, but stiff-legged bouncing with a 'zombie arm'. Best 100 m 21.8 s.
 - EXP-003: rebuilt Rupert on Colab. Learned to finish 100 m (best 19.2 s) but as a hunched shuffle. Great early-stage clips (collapse, lunge-and-fall, first shuffle).
 - REVIEW 2026-11-06: stock setup unfit for EP01 (wrong body size, scoring rewards standing, no early checkpoints, no stats/replay). Rebuilt. See decisions.md.
 - EXP-002: first Colab T4 run, reward 1.5 -> ~138, jump near step 60M. x-axis ran to ~88M not the 20M requested (unexplained). Checkpoints not saved (lost). Clip not rendered.
