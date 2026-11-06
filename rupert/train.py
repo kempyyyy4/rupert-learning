@@ -38,6 +38,7 @@ def main():
 
     print(f"Devices: {jax.devices()}")
     print(f"Task {args.task}, {cfg.num_timesteps:,} steps, {cfg.num_envs} parallel humanoids")
+    (out / "config.json").write_text(json.dumps({"task": args.task, **cfg.to_dict()}, indent=1, default=str))
 
     env = registry.load(args.task)
     eval_env = registry.load(args.task)

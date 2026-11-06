@@ -22,6 +22,7 @@ Rupert goes from collapsing to running, ending on his first 100m time trial. The
 
 ## Experiments
 - EXP-001: local smoke test, pipeline works (CPU, 17 min)
+- EXP-002: first Colab T4 run, reward 1.5 -> ~138, jump near step 60M. x-axis ran to ~88M not the 20M requested (unexplained). Checkpoints not saved (lost). Clip not rendered.
 
 ## Story beats (fill in as clips come in)
 - 
