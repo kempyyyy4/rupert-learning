@@ -3,6 +3,7 @@
 Newest first. Each entry: what we decided, and why.
 
 ## 2026-11-06
+- **Bolt race deprioritised.** Tom feels the Bolt angle is a bit played out. Focus on EP01 (learn to run); decide EP02's angle after the first video. Fair-start/timing issues vs Bolt are parked.
 - **Reviewed the stock setup and rebuilt it before any paid training** (Tom agreed all fixes). The stock score (~138) matched "standing upright, barely moving", not running.
 - **Rupert's body:** stock humanoid rescaled to 1.84 m / 70 kg, masses by body part from de Leva (1996), joint strengths in N·m, plus a muscle speed limit (faster joint = weaker). Sources and what is still unverified: `docs/body-sources.md`. Nothing marked TO VERIFY goes on screen.
 - **New scoring (`rupert/env.py`):** forward speed down the track (capped at 12.5 m/s, above Bolt's peak), small alive bonus, upright, facing forward, alternating strides; penalties for energy, jitter and leaving the lane. **The attempt ends when he falls.** Weights are first guesses and will need tuning.
@@ -23,7 +24,7 @@ Newest first. Each entry: what we decided, and why.
 - **Rupert is the trainee, not Bot.** Tom and the audience are the overseer and commentator. Rupert has no face: stick-figure style, tall and thin, orange beanie and orange shoes.
 - **Rupert's 3D model is built around the standard MuJoCo humanoid**, scaled gently towards his build. The physics body stays fixed across the series so later episodes can build on earlier training.
 - **No cheap first episode.** Rupert's model and a proper athletics track are built for Ep 1 and reused in every episode.
-- **The series is one long goal with Rupert learning in stages** (working spine: Ep 1 learn to run, Ep 2 vs Usain Bolt's 9.58). Ideas beyond that are deliberately open.
+- **The series is one long goal with Rupert learning in stages** (working spine: Ep 1 learn to run; Ep 2 open, Bolt race parked 2026-11-06). Ideas beyond that are deliberately open.
 - **Long-form first**, because it shows the learning journey.
 - **Build our own app on proven free tools** (MuJoCo, Blender, Python), adding features only when an episode needs them.
 - **Train in the cloud, render on Tom's PC.** The 1660 Ti can't run Isaac Lab and is too slow for big runs; cloud RTX 4090 time is roughly 25–55p an hour.
