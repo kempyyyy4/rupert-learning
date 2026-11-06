@@ -46,6 +46,17 @@ def main():
     results.append(try_step("JAX", jax_step))
     results.append(try_step("MJX", mjx_step))
     results.append(try_step("MuJoCo Playground", playground_step))
+
+    def rupert_step():
+        import jax
+        from rupert.env import load
+        env = load("Rupert100m")
+        state = jax.jit(env.reset)(jax.random.PRNGKey(0))
+        state = jax.jit(env.step)(state, jax.numpy.zeros(env.action_size))
+        mass = env.mj_model.body_subtreemass[1]
+        return f"Rupert's body loads: {mass:.0f} kg, {env.action_size} muscles, head at {float(env._head_height(state.data)):.2f} m"
+
+    results.append(try_step("Rupert", rupert_step))
     print("ALL GOOD" if all(results) else "SOME THINGS FAILED (see [FAIL] lines above)")
 
 

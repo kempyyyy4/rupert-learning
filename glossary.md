@@ -45,3 +45,15 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 **MJX** — MuJoCo built on JAX, so thousands of Ruperts can be simulated at once on a GPU.
 
 **MuJoCo Playground** — A ready-made set of robot tasks and training code built on MJX. Our starting point.
+
+**Checkpoint** — A saved copy of Rupert's brain at one moment in training. We replay old ones to show how he improved.
+
+**Reward / score** — The points Rupert gets for what he does. He learns whatever earns the most points, so the scoring rules decide what he learns.
+
+**Termination** — Ending an attempt early, here when Rupert falls over.
+
+**Force–velocity limit** — Real muscles are weaker the faster they're already moving. We copy that so Rupert can't swing his legs impossibly fast.
+
+**Replay file (.npz)** — The position and rotation of every body part on every frame of an attempt. Blender uses it to animate Rupert's 3D model.
+
+**Style judge (AMP)** — An optional extra AI that scores how human a movement looks, trained on real running footage. Not used for now.

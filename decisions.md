@@ -3,6 +3,15 @@
 Newest first. Each entry: what we decided, and why.
 
 ## 2026-11-06
+- **Reviewed the stock setup and rebuilt it before any paid training** (Tom agreed all fixes). The stock score (~138) matched "standing upright, barely moving", not running.
+- **Rupert's body:** stock humanoid rescaled to 1.84 m / 70 kg, masses by body part from de Leva (1996), joint strengths in N·m, plus a muscle speed limit (faster joint = weaker). Sources and what is still unverified: `docs/body-sources.md`. Nothing marked TO VERIFY goes on screen.
+- **New scoring (`rupert/env.py`):** forward speed down the track (capped at 12.5 m/s, above Bolt's peak), small alive bonus, upright, facing forward, alternating strides; penalties for energy, jitter and leaving the lane. **The attempt ends when he falls.** Weights are first guesses and will need tuning.
+- **No "style judge" trained on human running for now.** Try without it first; revisit if the gait looks wrong. Keeps "no pre-made animation" fully true.
+- **Physics accuracy raised:** 10 solver iterations (4 hit the limit on ~37% of steps), line search 50, 0.004 s steps, slightly stiffer contacts.
+- **Solved the 88M-step mystery:** Playground's `num_resets_per_eval=10` made Brax round each check-in up to ~9.8M steps. Set to 1.
+- **Checkpoints in two phases:** dense early (default every 1M steps for the first 40M), then ~100 spread over the rest. Only the brain is saved per checkpoint; the final one is full so training can resume.
+- **Per-attempt stats + Blender replay:** `rupert/evaluate.py` saves distance, top speed, time upright, 100 m time, steps, flight time and "firsts" per attempt, plus every body part's position/rotation per frame (`.npz`). `blender/import_replay.py` turns that into animated empties.
+- **Cloud runs delete their own pod** when they finish, crash or hit a time limit (`cloud/runpod_train.sh`, untested until first paid run). Results go to the network volume.
 - **JAX is pinned to 0.9.2.** The newest JAX (0.12) breaks Brax's PPO trainer. Revisit when Brax is updated.
 
 ## 2026-11-05
