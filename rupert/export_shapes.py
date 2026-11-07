@@ -32,8 +32,15 @@ def main():
             "pos": [float(v) for v in m.geom_pos[g]],
             "quat": [float(v) for v in m.geom_quat[g]],   # w, x, y, z; capsule runs along local z
         })
-    OUT.write_text(json.dumps(shapes, indent=1))
-    print(f"Saved {len(shapes)} shapes to {OUT}")
+    # resting pose (standing, arms down-ish): where every body part sits in the world.
+    # Blender builds Rupert's one-piece skin in this pose, then bends it with the replay.
+    d = mujoco.MjData(m)
+    mujoco.mj_forward(m, d)
+    rest = {m.body(b).name: {"pos": [float(v) for v in d.xpos[b]], "quat": [float(v) for v in d.xquat[b]],
+                             "parent": m.body(m.body_parentid[b]).name}
+            for b in range(1, m.nbody)}
+    OUT.write_text(json.dumps({"shapes": shapes, "rest": rest}, indent=1))
+    print(f"Saved {len(shapes)} shapes and {len(rest)} body rest poses to {OUT}")
 
 
 if __name__ == "__main__":
