@@ -8,8 +8,7 @@ Each costume is a function that adds clothes to a rupert_model.Body.
 import math
 
 import bmesh
-import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 import bl_helpers as H
 
@@ -123,7 +122,7 @@ def trimmed_vest(body, rgb, trim_rgb, name="vest"):
     def build(nodes, links, bsdf):
         attr = nodes.new("ShaderNodeAttribute")
         attr.attribute_name = "trim"
-        on = H.Maths(nodes, links).op("GREATER_THAN", attr.outputs["Fac"], 0.5)
+        on = H.Maths(nodes, links).op("GREATER_THAN", attr.outputs["Fac"], 0.0)
         H.two_colour(nodes, links, on, rgb, trim_rgb, bsdf)
 
     lw = body.shape("lower_waist")
@@ -139,123 +138,104 @@ def trimmed_vest(body, rgb, trim_rgb, name="vest"):
     shoulders = [Vector(body.rest[f"{s}_upper_arm"]["pos"]) for s in ("right", "left")]
     vals = []
     for v in vest.data.vertices:
-        near_neck = H._dist(v.co, na, nb) < 0.083
-        near_arm = min((v.co - p).length for p in shoulders) < 0.082
-        vals.append(1.0 if (near_neck or near_arm) else 0.0)
+        neck_in = 0.083 - H._dist(v.co, na, nb)
+        arm_in = 0.082 - min((v.co - p).length for p in shoulders)
+        vals.append(max(neck_in, arm_in))                  # > 0 inside the trim band
     attr = vest.data.attributes.new("trim", "FLOAT", "POINT")
     attr.data.foreach_set("value", vals)
     vest.data.materials.append(H.node_material(name, build, rough=0.75, sheen=0.4))
     H.skin_to_skeleton(vest, ["torso", "lower_waist"], body.segs, body.skeleton)
 
 
-def _slice_radius(points, centre, axis_u, axis_v, theta, tol_deg=9.0):
-    """Largest distance from centre, among points roughly in direction theta (in the u-v plane)."""
-    best = 0.0
-    for p in points:
-        d = p - centre
-        u, v = d.dot(axis_u), d.dot(axis_v)
-        diff = (math.degrees(math.atan2(v, u) - theta) + 180) % 360 - 180
-        if abs(diff) < tol_deg:
-            best = max(best, math.hypot(u, v))
-    return best
-
-
-def _smooth(vals, passes=2):
-    n = len(vals)
-    for _ in range(passes):
-        vals = [(vals[i - 1] + 2 * vals[i] + vals[(i + 1) % n]) / 4 for i in range(n)]
-    return vals
-
-
-def loose_shorts(body, rgb, trim_rgb, hem_below_hip=0.13, split=0.04, name="shorts"):
-    """70s satin running shorts: separate fabric hanging loose off the hips, short flared legs
-    with a split up the outer side, white piping on the hems and waistband."""
-    skin_pts = {k: [v.co.copy() for v in bpy.data.objects[f"rupert_skin_{k}"].data.vertices]
-                for k in ("core", "leg_r", "leg_l")}
-    segs = 40
-    thetas = [2 * math.pi * j / segs for j in range(segs)]
-    X, Y, Z = Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))
-    bm = bmesh.new()
-    weights, trims = [], []          # per vertex: {body: weight}, trim 0/1
-
-    def ring(centre, au, av, radii, w, trim):
-        out = []
-        for th, r in zip(thetas, radii):
-            out.append(bm.verts.new(centre + au * (r * math.cos(th)) + av * (r * math.sin(th))))
-            weights.append(w)
-            trims.append(trim)
-        return out
-
-    def bridge(r0, r1):
-        for j in range(segs):
-            bm.faces.new((r0[j], r0[(j + 1) % segs], r1[(j + 1) % segs], r1[j]))
-
-    # trunk: waist down to the crotch, wrapped round hips and both thighs
-    centre_xy = Vector((-0.015, 0, 0))
-    pts = skin_pts["core"] + skin_pts["leg_r"] + skin_pts["leg_l"]
-    heights = [1.245, 1.236, 1.2, 1.15, 1.1, 1.05, 1.0, 0.965]
-    trunk = []
-    for z in heights:
-        sl = [p for p in pts if abs(p.z - z) < 0.015]
-        c = centre_xy + Z * z
-        clear = 0.02 + 0.016 * (1.245 - z) / (1.245 - 0.965)
-        radii = _smooth([_slice_radius(sl, c, X, Y, th) + clear for th in thetas])
-        w_lw = min(1.0, max(0.0, (z - 1.06) / 0.14))
-        trunk.append(ring(c, X, Y, radii, {"lower_waist": w_lw, "pelvis": 1 - w_lw}, 1.0 if z > 1.23 else 0.0))
-    for a, b in zip(trunk, trunk[1:]):
-        bridge(a, b)
-    crotch = bm.verts.new(centre_xy + Z * 0.95)
-    weights.append({"pelvis": 1.0})
-    trims.append(0.0)
-    last = trunk[-1]
-    for j in range(segs):
-        bm.faces.new((last[(j + 1) % segs], last[j], crotch))
-
-    # legs: flared tubes from inside the trunk down past the hem, outer side split
-    for side, key, bone in ((-1, "leg_r", "right_thigh"), (1, "leg_l", "left_thigh")):
+def loose_shorts(body, rgb, trim_rgb, hem_below_hip=0.13, split=0.035, waist_z=1.245, name="shorts"):
+    """70s satin running shorts: ONE smooth piece of fabric hanging loose off the hips (waist and
+    both legs melted together, so no seams or ledges), legs cut open at the hem, hem angled up on
+    the outer side like a side split, white piping on the hems and waistband."""
+    els = [
+        ("capsule", body.shape_m("lower_waist"), 0.115, body.shape("lower_waist")["half_length"]),
+        ("capsule", body.shape_m("butt"), 0.124, body.shape("butt")["half_length"]),
+    ]
+    hips = {}
+    for side, bone in ((-1, "right_thigh"), (1, "left_thigh")):
         hip = Vector(body.rest[bone]["pos"])
-        th_out = math.atan2(side, 0)                    # outer side of this leg (+/- y)
-        hem = [hem_below_hip - split * max(0.0, math.cos(th - th_out)) ** 4 for th in thetas]
-        rings = []
-        for f in (-0.25, 0.15, 0.45, 0.75, 0.9, 1.0):
-            depth_c = hem_below_hip * f
-            sl = [p for p in skin_pts[key] if abs(p.z - (hip.z - depth_c)) < 0.015]
-            c = hip - Z * depth_c
-            base = _smooth([max(_slice_radius(sl, c, X, Y, th), 0.07) for th in thetas])
-            clear = 0.016 + 0.026 * max(0.0, f)
-            cs = []
-            radii = []
-            for th, r, h in zip(thetas, base, hem):
-                radii.append(r + clear)
-                cs.append(h * f)
-            verts = []
-            for th, r, d in zip(thetas, radii, cs):
-                verts.append(bm.verts.new(hip - Z * d + X * (r * math.cos(th)) + Y * (r * math.sin(th))))
-                w_thigh = 0.85 * min(1.0, max(0.0, f))
-                weights.append({bone: w_thigh, "pelvis": 1 - w_thigh})
-                trims.append(1.0 if f >= 0.9 else 0.0)
-            rings.append(verts)
-        for a, b in zip(rings, rings[1:]):
-            bridge(a, b)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        hips[side] = hip
+        n = 6
+        for i in range(n):                          # flared tube down the thigh, past the hem
+            d0, d1 = -0.04 + 0.22 * i / n, -0.04 + 0.22 * (i + 1) / n
+            r = 0.104 + 0.014 * max(0.0, (d0 + d1) / 2) / hem_below_hip
+            a, b = hip - Vector((0, 0, d0)), hip - Vector((0, 0, d1))
+            m = Matrix.Translation((a + b) / 2)
+            els.append(("capsule", m, r, (a - b).length / 2))
+    obj = H.metaball_mesh(f"rupert_{name}", els, body.coll, resolution=0.009)
 
-    def build(nodes, links, bsdf):
-        attr = nodes.new("ShaderNodeAttribute")
-        attr.attribute_name = "trim"
-        on = H.Maths(nodes, links).op("GREATER_THAN", attr.outputs["Fac"], 0.5)
-        H.two_colour(nodes, links, on, rgb, trim_rgb, bsdf)
+    # cut open the waist and the leg hems (clean straight cuts), with a second cut for the piping line
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    piping = 0.013
 
-    obj = H.mesh_object(f"rupert_{name}", bm, H.node_material(name, build, rough=0.4, sheen=0.2), body.coll)
+    def cut(plane_co, plane_no, keep_test, delete=True):
+        geom = [g for g in list(bm.verts) + list(bm.edges) + list(bm.faces) if keep_test(g)]
+        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=plane_co, plane_no=plane_no, dist=1e-5)
+        if delete:
+            dead = [v for v in bm.verts if keep_test(v) and (v.co - plane_co).dot(plane_no) < -1e-5]
+            bmesh.ops.delete(bm, geom=dead, context="VERTS")
+
+    def centre(g):
+        return g.co if isinstance(g, bmesh.types.BMVert) else (
+            sum((v.co for v in g.verts), Vector()) / len(g.verts))
+
+    up = Vector((0, 0, 1))
+    cut(Vector((0, 0, waist_z)), -up, lambda g: True)
+    cut(Vector((0, 0, waist_z - piping)), -up, lambda g: True, delete=False)
+    for side, hip in hips.items():
+        # hem plane: hem_below_hip under the hip, tilted up toward the outer side by `split`
+        no = Vector((0, -side * split / 0.12, 1)).normalized()
+        co = hip - Vector((0, 0, hem_below_hip))
+        on_leg = (lambda sd: lambda g: centre(g).y * sd > 0.0 and centre(g).z < 1.0)(side)
+        cut(co, no, on_leg)
+        cut(co + no * piping, no, on_leg, delete=False)
+    bm.to_mesh(obj.data)
+    bm.free()
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+
+    # piping (white) next to the cuts; weights: waist follows the hips, legs follow the thighs
+    trims, weights = [], []
+    for v in obj.data.vertices:
+        c = v.co
+        t = c.z - (waist_z - piping)                       # > 0 inside the waistband piping
+        side = 1 if c.y > 0 else -1
+        hip = hips[side]
+        depth = hip.z - c.z
+        no = Vector((0, -side * split / 0.12, 1)).normalized()
+        if c.z < 1.0:
+            t = max(t, piping - (c - (hip - Vector((0, 0, hem_below_hip)))).dot(no))   # > 0 in the hem piping
+        trims.append(t)
+        sideways = min(1.0, max(0.0, (abs(c.y) - 0.02) / 0.05))        # crotch centre stays with the pelvis
+        w_thigh = 0.85 * min(1.0, max(0.0, depth / hem_below_hip)) * sideways
+        w_lw = min(1.0, max(0.0, (c.z - 1.08) / 0.12))
+        weights.append({("left_thigh" if side > 0 else "right_thigh"): w_thigh,
+                        "lower_waist": (1 - w_thigh) * w_lw, "pelvis": (1 - w_thigh) * (1 - w_lw)})
     attr = obj.data.attributes.new("trim", "FLOAT", "POINT")
     attr.data.foreach_set("value", trims)
     groups = {}
     for i, w in enumerate(weights):
         for b, x in w.items():
-            if x > 0:
+            if x > 1e-4:
                 g = groups.get(b) or obj.vertex_groups.new(name=b)
                 groups[b] = g
                 g.add([i], x, "REPLACE")
+
+    def build(nodes, links, bsdf):
+        attr = nodes.new("ShaderNodeAttribute")
+        attr.attribute_name = "trim"
+        on = H.Maths(nodes, links).op("GREATER_THAN", attr.outputs["Fac"], 0.0)
+        H.two_colour(nodes, links, on, rgb, trim_rgb, bsdf)
+
+    obj.data.materials.append(H.node_material(name, build, rough=0.4, sheen=0.2))
     obj.modifiers.new("skeleton", "ARMATURE").object = body.skeleton
+    cs = obj.modifiers.new("no_creases", "CORRECTIVE_SMOOTH")   # irons out pinching when the legs swing
+    cs.factor, cs.iterations, cs.rest_source = 0.6, 6, "ORCO"
     obj.modifiers.new("thick", "SOLIDIFY").thickness = 0.004
     sub = obj.modifiers.new("smooth", "SUBSURF")
     sub.levels = sub.render_levels = 1

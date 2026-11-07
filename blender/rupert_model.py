@@ -28,8 +28,9 @@ MOUTH_INSIDE = (0.05, 0.008, 0.01)
 OUTLINE_M = 0.0045                # ink outline thickness (metres); 0 = off
 
 HEAD_R = 0.14                     # physics head is 0.098; cartoon head
-HEAD_LIFT = 0.02                  # head sphere sits this far above the physics head centre
-CHEEKS = dict(offset=(0.02, 0.055, -0.055), radius=0.08)   # fuller lower face, like the drawings
+HEAD_LIFT = 0.045                 # head centre sits this far above the physics head centre (cartoon neck)
+# Head shape (character sheet): round dome, wide flat cheekbones, straight jawlines down to a narrow chin
+HEAD_SHAPE = dict(chin_length=1.1, chin_width=0.34, cheekbone=0.2, face_flat=0.9)
 SKIN_RADIUS = {
     "thigh": 0.072, "shin": 0.052, "upper_arm": 0.045, "lower_arm": 0.037, "hand": 0.05,
     "lower_waist": 0.09, "butt": 0.095, "torso": 0.07,
@@ -78,7 +79,7 @@ class Body:
         return self.m("torso") @ Matrix.Translation((0, 0, CHEST["offset"]))
 
     def neck_m(self):
-        return self.m("torso") @ Matrix.Translation((0, 0, self._head_z() * 0.55))
+        return self.m("torso") @ Matrix.Translation((0, 0, self._head_z() * 0.62))
 
     def _head_z(self):
         return (self.m("torso").inverted() @ Vector(self.rest["head"]["pos"])).z
@@ -87,10 +88,8 @@ class Body:
         """Point on the skin of the head along direction d (head frame), pushed out by `out`."""
         centre = Vector((0, 0, HEAD_LIFT))
         d = d.normalized()
-        world_c = self.m("head") @ centre
-        hit, _, _, _ = self.head_bvh.ray_cast(world_c, (self.m("head").to_3x3() @ d).normalized())
-        local = self.m("head").inverted() @ hit if hit else centre + d * HEAD_R
-        return local + d * out
+        hit, _, _, _ = self.head_bvh.ray_cast(centre, d)
+        return (hit if hit else centre + d * HEAD_R) + d * out
 
     def outer_surface(self, d, out=0.0):
         """Outermost point (hair or skin) of the head along direction d (head frame)."""
@@ -123,18 +122,12 @@ class Body:
                 continue
             group = next(g for g, bodies in SKIN_GROUPS.items() if body in bodies)
             if name == "head":
-                head = self.m(body)
-                pieces.append((group, body, "ball", head @ Matrix.Translation((0, 0, HEAD_LIFT)), HEAD_R, 0))
-                ox, oy, oz = CHEEKS["offset"]
-                for side in (1, -1):
-                    pieces.append((group, body, "ball", head @ Matrix.Translation((ox, oy * side, HEAD_LIFT + oz)),
-                                   CHEEKS["radius"], 0))
-                continue
+                continue                    # the head is sculpted separately (build_head)
             key = next((k for k in SKIN_RADIUS if name.endswith(k)), None)
             pieces.append((group, body, "ball" if s["type"] == "sphere" else "capsule",
                            self.m(body) @ H.shape_matrix(s), SKIN_RADIUS.get(key, s["radius"]), s["half_length"]))
         pieces.append(("skin_core", "torso", "capsule", self.chest_m(), CHEST["radius"], CHEST["half"]))
-        pieces.append(("skin_core", "torso", "capsule", self.neck_m(), 0.045, self._head_z() * 0.3))
+        pieces.append(("skin_core", "torso", "capsule", self.neck_m(), 0.045, self._head_z() * 0.4))
         return pieces
 
     def _bone_lines(self):
@@ -173,12 +166,42 @@ def build_skin(body):
     skin = H.material("rupert_skin", SKIN, rough=0.5, sheen=0.15)
     for group, bodies in SKIN_GROUPS.items():
         els = [(k, m, r, h) for g, _, k, m, r, h in body.pieces if g == group]
-        obj = body.skinned(f"rupert_{group}", els, bodies, skin)
-        if group == "skin_core":
-            bm = bmesh.new()
-            bm.from_mesh(obj.data)              # rest-pose surface, for placing face and hair
-            body.head_bvh = BVHTree.FromBMesh(bm)
-            bm.free()
+        body.skinned(f"rupert_{group}", els, bodies, skin)
+
+
+def _head_point(d):
+    """Sculpt: where the head surface is along unit direction d (head frame, centre at origin)."""
+    hs = HEAD_SHAPE
+    p = d * HEAD_R
+    x, y, z = p.x, p.y, p.z
+    if z > 0:
+        z *= 0.95                                         # slightly flatter dome
+    else:
+        s = min(1.0, -z / HEAD_R)                         # 0 at the equator .. 1 at the chin
+        z *= hs["chin_length"]
+        y *= 1 - (1 - hs["chin_width"]) * s ** 1.15       # straight jawlines to a narrow chin
+        x *= (1 - 0.22 * s) if x > 0 else (1 - 0.6 * s)   # jaw tucked in at the back
+    # cheekbones: widest point a little below the eyes, on the front half of the face
+    bump = math.exp(-((z / HEAD_R + 0.12) / 0.13) ** 2) * min(1.0, max(0.0, x / HEAD_R + 0.35))
+    y *= 1 + hs["cheekbone"] * bump
+    if x > 0:
+        x *= hs["face_flat"]                              # flatter face
+    return Vector((x, y, z))
+
+
+def build_head(body):
+    """Rupert's head: a sculpted shape (not a blob) so the cheekbones and jaw read clearly."""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=72, v_segments=48, radius=1.0)
+    for v in bm.verts:
+        v.co = _head_point(v.co.normalized()) + Vector((0, 0, HEAD_LIFT))
+    head = H.mesh_object("rupert_head", bm, bpy.data.materials["rupert_skin"], body.coll)
+    head.parent = body.empties["head"]
+    bm = bmesh.new()
+    bm.from_mesh(head.data)                 # head-frame surface, for placing face, hair, bands
+    body.head_bvh = BVHTree.FromBMesh(bm)
+    bm.free()
+    return head
 
 
 # ---- face (decals stuck onto the head surface) -------------------------------------
@@ -233,25 +256,11 @@ def build_face(body, expression="happy"):
 
 
 # ---- hair ---------------------------------------------------------------------------
-def _strand(body, v0, v1, els, lift, r0=0.024, r1=0.02, out0=0.004, out1=0.016, n=9):
-    """One lock of hair: a chain of blobs from v0 to v1 over the scalp, lifted near the front."""
-    pts = []
-    for i in range(n + 1):
-        t = i / n
-        d = v0.slerp(v1, t)
-        out = out0 + (out1 - out0) * t + lift * math.sin(math.pi * min(1.0, t * 1.5))
-        pts.append(body.head_surface(d, out))
-    for i, (p, q) in enumerate(zip(pts, pts[1:])):
-        r = r0 + (r1 - r0) * (i + 0.5) / n
-        m = Matrix.Translation((p + q) / 2) @ H.look_along(q - p, axis=(0, 0, 1)).to_matrix().to_4x4()
-        els.append(("capsule", m, r, (q - p).length / 2))
-
-
 def _hair_streaks(nodes, links, bsdf):
     """Light and dark streaks running front-to-back, so the swept-back flow reads."""
     coord = nodes.new("ShaderNodeTexCoord")
     mapping = nodes.new("ShaderNodeMapping")
-    mapping.inputs["Scale"].default_value = (4.0, 70.0, 70.0)      # stretched along x = front-to-back
+    mapping.inputs["Scale"].default_value = (18.0, 18.0, 45.0)     # fine streaks, mostly vertical-ish
     noise = nodes.new("ShaderNodeTexNoise")
     noise.inputs["Scale"].default_value = 1.0
     noise.inputs["Detail"].default_value = 3.0
@@ -268,30 +277,50 @@ def _hair_streaks(nodes, links, bsdf):
     links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
 
 
+def _lock(body, v0, v1, els, lift=0.02, wave=0.007, phase=0.0, flick=0.016, r0=0.027, r1=0.012, out0=0.005, n=10):
+    """One wavy lock of hair: from the root (v0) over the head to the tip (v1), lifted at the
+    root, waving in and out along its length, tip flicking outward."""
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        d = v0.slerp(v1, t)
+        out = (out0 + lift * math.sin(math.pi * min(1.0, t * 1.25))
+               + wave * math.sin(2 * math.pi * 1.3 * t + phase)
+               + flick * max(0.0, (t - 0.7) / 0.3) ** 2)
+        pts.append(body.head_surface(d, max(out, 0.0)))
+    for i, (p, q) in enumerate(zip(pts, pts[1:])):
+        r = r0 + (r1 - r0) * ((i + 0.5) / n) ** 1.3
+        m = Matrix.Translation((p + q) / 2) @ H.look_along(q - p, axis=(0, 0, 1)).to_matrix().to_4x4()
+        els.append(("capsule", m, r, (q - p).length / 2))
+
+
 def build_hair(body):
-    """70s swept-back, feathered mop: locks start at the hairline and flow back over the
-    head and down to the nape; extra volume on the crown; sides swept back over the ears."""
+    """Medium-length, wavy 'flow' (Tom's reference): lifted at the front and swept back and
+    out to the sides, covering the tops of the ears, down to the collar with flicked-out ends."""
     els = []
-    for i in range(15):                                   # hairline: front and temples
-        s = -1 + i / 7
-        v0 = direction(36 - 14 * s * s, 70 * s)
-        v1 = direction(-18 - 14 * abs(s), 180 - 40 * s)
-        _strand(body, v0, v1, els, lift=0.04 * (1 - 0.55 * abs(s)))
-    for i in range(8):                                    # crown volume
-        s = -0.85 + i * 1.7 / 7
-        _strand(body, direction(52 - 10 * s * s, 55 * s), direction(-22 - 10 * abs(s), 180 - 35 * s), els,
-                lift=0.03, out0=0.02, out1=0.016)
-    for side in (1, -1):                                  # sides, over the ears
-        for k in range(4):
-            _strand(body, direction(18 - 9 * k, side * (78 + 5 * k)), direction(-30 - 6 * k, side * (150 + 6 * k)),
-                    els, lift=0.008, r0=0.024, r1=0.022)
-    for i in range(5):                                    # back, down to the nape
-        s = -1 + i / 2
-        _strand(body, direction(55, 180 + 35 * s), direction(-42, 180 + 30 * s), els, lift=0.01, out0=0.01)
-    hair = H.metaball_mesh("rupert_hair", els, body.coll, resolution=0.007)
-    hair.data.materials.append(H.node_material("rupert_hair", _hair_streaks, rough=0.65, sheen=0.25))
-    sm = hair.modifiers.new("smooth", "SMOOTH")        # softer locks, no deep creases
-    sm.factor, sm.iterations = 1.0, 12
+    # base layer: covers the scalp so no skin shows between locks (stops at the hairline in front)
+    for az in range(0, 360, 24):
+        a = (az + 180) % 360 - 180
+        tip_el = 34 if abs(a) <= 50 else (-8 if abs(a) < 120 else -38)
+        _lock(body, direction(80, az), direction(tip_el, az), els, lift=0.0, wave=0.0, flick=0.0,
+              r0=0.032, r1=0.026, out0=0.0, n=7)
+    for side in (1, -1):
+        # front: lifted off the forehead, sweeping back and out to the temples
+        for k in range(6):
+            _lock(body, direction(40 - 1.5 * k, side * (3 + 7 * k)), direction(6 - 4 * k, side * (80 + 11 * k)), els,
+                  lift=0.034 - 0.003 * k, wave=0.006, phase=0.7 * k, flick=0.018)
+        # top and sides: from the crown, flowing back and down over the ears
+        for k in range(6):
+            _lock(body, direction(52 + 7 * k, side * 10), direction(-6 - 8 * k, side * (100 + 13 * k)), els,
+                  lift=0.024, wave=0.008, phase=1.1 * k + side, flick=0.02, r0=0.029)
+    # back: from the crown down to the collar, ends flicking out
+    for k in range(-3, 4):
+        _lock(body, direction(74, 180 + 16 * k), direction(-50, 180 + 22 * k), els,
+              lift=0.016, wave=0.009, phase=0.9 * k, flick=0.024, r0=0.029, r1=0.013)
+    hair = H.metaball_mesh("rupert_hair", els, body.coll, resolution=0.0065)
+    hair.data.materials.append(H.node_material("rupert_hair", _hair_streaks, rough=0.6, sheen=0.3))
+    sm = hair.modifiers.new("smooth", "SMOOTH")        # soften, but keep the wavy locks
+    sm.factor, sm.iterations = 0.8, 4
     hair.parent = body.empties["head"]
     bm = bmesh.new()
     bm.from_mesh(hair.data)                    # head-frame surface, for hats and headbands
@@ -318,6 +347,7 @@ def build_rupert(empties, coll, costume):
     import costumes
     body = Body(empties, coll)
     build_skin(body)
+    build_head(body)
     outfit = costumes.COSTUMES[costume]
     build_face(body, outfit.get("expression", "happy"))
     build_hair(body)

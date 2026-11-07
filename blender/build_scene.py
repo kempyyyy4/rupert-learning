@@ -49,7 +49,6 @@ N_LANES = 8
 RUPERT_LANE = 3                      # lanes 1 (nearest camera) .. 8
 TRACK_X = (-40.0, 240.0)
 FINISH_X = 100.0
-CHANNEL = "RUPERT'S AI DIARIES"
 
 def lane_edge(i):
     """Y of the line on the near side of lane i (lane RUPERT_LANE is centred on 0)."""
@@ -153,32 +152,24 @@ def build_stadium(coll, screen_text):
     for i in range(1, N_LANES + 1):    # painted lane numbers behind the start line
         text(f"lane_no_{i}", str(i), (-1.2, lane_edge(i) + LANE_W / 2, 0.003), (0, 0, -90), 0.7, line_m, coll, 0.001)
 
-    # advertising boards along the far side; a distance board every 10 m, FINISH at 100 m
+    # plain coloured barrier boards along the far side
     by = y1 + 1.6
-    white_m = material("board_white", (1, 1, 1), rough=0.4, emit=0.1)
-    num_m = material("board_text", (0.03, 0.05, 0.2), rough=0.5)
-    fin_m = material("finish_board", (1.0, 0.8, 0.0), rough=0.4, emit=0.25)
-    txt_m = material("board_text_white", (1, 1, 1), rough=0.4, emit=0.5)
     board_ms = [material(f"board_{i}", c, rough=0.35, emit=0.35) for i, c in enumerate(BOARD_COLOURS)]
-    x, k = TRACK_X[0], 0
-    while x < TRACK_X[1] - 0.01:
-        near10 = round(x / 10) * 10
-        if abs(x - (near10 - 1.25)) < 0.01 and 0 < near10 <= 200:
-            fin = near10 == FINISH_X
-            box(f"board_{near10}m", (2.4, 0.15, 0.9), (near10, by, 0.45), fin_m if fin else white_m, coll, bevel=0.03)
-            text(f"board_{near10}m_txt", "FINISH" if fin else f"{near10}m", (near10, by - 0.085, 0.43), (90, 0, 0),
-                 0.42 if fin else 0.55, num_m, coll)
-            x += 2.5
-            continue
-        nxt = (math.floor(x / 10) + 1) * 10 - 1.25          # where the next distance board starts
-        seg = nxt - x if 0 < nxt + 1.25 <= 200 else 5.0
-        if seg < 0.05:
-            seg = 5.0
-        box(f"board_{k}", (seg - 0.1, 0.15, 0.9), (x + seg / 2, by, 0.45), board_ms[k % len(board_ms)], coll, bevel=0.03)
-        if seg > 5:
-            text(f"board_{k}_txt", CHANNEL, (x + seg / 2, by - 0.085, 0.43), (90, 0, 0), 0.36, txt_m, coll)
-        x += seg
-        k += 1
+    for k, x in enumerate(range(int(TRACK_X[0]), int(TRACK_X[1]), 5)):
+        box(f"board_{k}", (4.9, 0.15, 0.9), (x + 2.5, by, 0.45), board_ms[k % len(board_ms)], coll, bevel=0.03)
+    # big raised distance signs every 10 m (readable in wide shots); yellow FINISH at 100 m
+    white_m = material("sign_white", (1, 1, 1), rough=0.4, emit=0.15)
+    fin_m = material("finish_board", (1.0, 0.8, 0.0), rough=0.4, emit=0.3)
+    num_m = material("sign_text", (0.03, 0.05, 0.2), rough=0.5)
+    post_m = material("sign_post", (0.85, 0.86, 0.88), rough=0.4)
+    sy = by + 0.6
+    for d in range(10, 210, 10):
+        fin = d == FINISH_X
+        box(f"sign_{d}m", (3.2, 0.14, 1.6), (d, sy, 1.85), fin_m if fin else white_m, coll, bevel=0.04)
+        for side in (-1, 1):
+            box(f"sign_{d}m_post", (0.1, 0.1, 1.1), (d + side * 1.2, sy + 0.04, 0.55), post_m, coll)
+        text(f"sign_{d}m_txt", "FINISH" if fin else f"{d}m", (d, sy - 0.08, 1.82), (90, 0, 0),
+             0.85 if fin else 1.15, num_m, coll)
 
     # stands: stepped concrete with blue seats and a crowd
     stand_m = material("stand", COL["stand"], rough=0.8)
@@ -261,9 +252,9 @@ def build_cameras(empties):
     # wide, fixed shot of the start area and the attempts board (for sped-up training montages)
     wide = bpy.data.objects.new("cam_wide_start", bpy.data.cameras.new("cam_wide_start"))
     wide.data.lens = 30
-    wide.location = (2.0, -13.0, 4.2)
+    wide.location = (0.5, -13.5, 4.4)
     look = bpy.data.objects.new("cam_wide_target", None)
-    look.location = (5.0, 3.0, 1.2)
+    look.location = (2.5, 3.0, 1.4)
     scene.collection.objects.link(look)
     t = wide.constraints.new("TRACK_TO")
     t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
@@ -312,7 +303,7 @@ def main():
     build_rupert(empties, rupert, args.costume)
     build_stadium(stadium, screen_text)
     y_far = lane_edge(N_LANES + 1)
-    board = attempts_board.build_board(stadium, (9.0, y_far + 2.7, 1.3), digit_h=0.8)
+    board = attempts_board.build_board(stadium, (-4.5, y_far + 2.9, 1.3), digit_h=0.8)
     attempts_board.set_number(board, 1, args.attempts)
     build_world_and_light()
     build_cameras(empties)
