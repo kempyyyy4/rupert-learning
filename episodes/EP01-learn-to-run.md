@@ -43,7 +43,7 @@ In narration, each fix is "giving Rupert a reward" (or a rule) for doing somethi
 | 4 | **Robot run on straight legs**, then **forgets how to run overnight** | EXP-005 `rupert_20261106_2220/step_0000345047040.mp4` | Rewarded for **bending his knees**; we made him learn more carefully |
 | 5 | **Runs on his knees** | EXP-006 `rupert_20261107_1159/step_0000728432640.mp4` | **Knees on the ground = a fall**; knee reward only in a real stride |
 | 6 | **T-rex scuttle**: arms clamped to his chest, feet scurrying under his hips at Bolt speed (100 m in 10.0 s) | EXP-007 `rupert_20261107_1323/step_0000875888640.mp4` | Rewarded for **swinging his arms**; given an **ordinary young man's body** (lab-tested strength, muscles that take time to switch on) |
-| 7 | **Lopsided gallop with a frozen 'superhero' arm**: same leg always leads, arms held in a fixed 'opposite' pose to fake the arm swing. (Now at a realistic 13.5 s per 100 m.) | EXP-008 `rupert_20261107_2130/step_0000757923840.mp4` | TBC: arm reward for actual *swinging*; legs must take turns, or the style judge |
+| 7 | **Lopsided gallop with a frozen 'superhero' arm**: same leg always leads, arms held in a fixed 'opposite' pose to fake the arm swing. (Now at a realistic 13.5 s per 100 m.) | EXP-008 `rupert_20261107_2130/step_0000757923840.mp4` | Arm reward only for arms that actually **swing**; full stride points only for **even steps** |
 | 8 | ? | EXP-009 | |
 
 Honesty notes for the script:

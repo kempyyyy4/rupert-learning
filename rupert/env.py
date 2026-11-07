@@ -10,16 +10,18 @@ Scoring (all per control step, 50 times a second). Weights are in REWARD_WEIGHTS
   + upright       : chest AND pelvis upright (1 = perfectly upright)
   + heading       : facing down the track
   + stride        : when a foot lands, metres it travelled since it left the ground
-                    (only alternating feet, only after a real swing of MIN_SWING_S+).
+                    (only alternating feet, only after a real swing of MIN_SWING_S+, and only
+                    if it lands in front of the other foot), scaled by how EVEN the last two steps
+                    are (shorter / longer). EXP-008 limped with one long and one short step.
                     Rewards long strides directly. Air-time-based v2 was cheated with
                     tiny stiff-legged bounces (run rupert_20261106_2121).
   - energy        : mechanical power used by the muscles, per kg (wasted effort = weird gaits)
   - jerk          : sudden changes in muscle commands (jitter)
   - lane          : drifting sideways out of the lane, and sideways speed
   - arms          : a hand held far in front of / behind the chest (v2 ran with a 'zombie arm')
-  + arm_swing     : arms swinging opposite to the legs (left hand forward while the right foot is
-                    forward). EXP-007 clamped one arm to his chest ('T-rex scuttle'), because the
-                    'arms' penalty alone made frozen arms the cheapest option.
+  + arm_swing     : arms MOVING opposite to the legs (left hand swinging forward while the right
+                    foot swings forward). EXP-007 clamped one arm to his chest ('T-rex scuttle');
+                    EXP-008 faked a position-based version with a frozen pose and a gallop.
   + knees         : swinging leg's knee bent (up to ~90 deg) while the OTHER foot is planted, minus a penalty for locking a
                     knee past straight. v3 (run rupert_20261106_2220) ran on near-straight legs.
 The attempt ENDS if he falls: head below FALL_HEAD_HEIGHT_M, or a knee or hand near the ground
@@ -73,9 +75,11 @@ REWARD_WEIGHTS = dict(
 KNEE_SWING_TARGET_RAD = 1.6   # ~90 deg: full credit for this much bend while the foot is in the air
 KNEE_ORDER = ("right_knee", "left_knee")   # same order as FOOT_GEOMS
 HAND_REACH_M = 0.35   # hands further than this in front of / behind the chest are penalised
-# arm_swing = -(left hand - right hand forward) x (left foot - right foot forward) / this, capped at +-1.
-# A good running arm swing (hands ~+-0.2 m, feet ~+-0.4 m) averages about 1. Frozen arms average 0.
-ARM_SWING_SCALE = 0.15
+# arm_swing (scoring v7) = -(left - right hand forward SPEED) x (left - right foot forward SPEED)
+# / this, capped at +-1. Uses speeds, not positions: EXP-008 held a frozen 'opposite' pose and
+# galloped to collect the position-based v6 reward without swinging.
+ARM_SWING_SCALE = 40.0   # calibrated below on replays; a real swing averages well above 0, frozen = 0
+LEAD_MARGIN_M = 0.10     # a step only counts if the landing foot lands this far ahead of the other
 
 # Muscle switch-on / switch-off time constants (s): Zajac (1989), Winters (1990), as used by
 # OpenSim's first-order activation model. Body v1 had instant muscles.
@@ -173,6 +177,8 @@ class RupertRun(mjx_env.MjxEnv):
             "air_time": jp.zeros(2),
             "last_foot": jp.array(-1.0),
             "liftoff_x": jp.zeros(2),
+            "limb_fwd": self._limb_fwd(data),
+            "last_step": jp.array(-1.0),   # unknown until the first proper step
         }
         metrics = {k: jp.zeros(()) for k in (
             *(f"reward/{w}" for w in REWARD_WEIGHTS),
@@ -246,7 +252,15 @@ class RupertRun(mjx_env.MjxEnv):
         alternating = foot_idx != info["last_foot"]
         foot_x = data.geom_xpos[self._foot_geom_ids[:, 0], 0]
         travelled = jp.clip(foot_x - info["liftoff_x"], 0.0, MAX_STRIDE_CREDIT_M)
-        parts["stride"] = jp.sum(jp.where(touchdown & alternating & (air >= MIN_SWING_S), travelled, 0.0))
+        # Even steps: credit is scaled by (shorter step / longer step) of the last two steps, where a
+        # step = how far the landing foot lands in front of the other foot. EXP-008 limped along with
+        # left steps ~0.3 m and right steps ~0.75 m (factor 0.4); an even run scores ~1.
+        step_len = foot_x - foot_x[::-1]
+        last = info["last_step"]
+        even = jp.where(last > 0, jp.minimum(step_len, last) / jp.maximum(step_len, last), 1.0)
+        valid = touchdown & alternating & (air >= MIN_SWING_S) & (step_len > LEAD_MARGIN_M)
+        parts["stride"] = jp.sum(jp.where(valid, travelled * jp.clip(even, 0.0, 1.0), 0.0))
+        info["last_step"] = jp.where(valid.any(), jp.sum(jp.where(valid, step_len, 0.0)), last)
         liftoff = (~contact) & (air == 0)
         info["liftoff_x"] = jp.where(liftoff, foot_x, info["liftoff_x"])
         info["last_foot"] = jp.where(touchdown.any(), jp.argmax(touchdown).astype(float), info["last_foot"])
@@ -258,11 +272,13 @@ class RupertRun(mjx_env.MjxEnv):
         parts["jerk"] = jp.mean(jp.square(action - info["last_action"]))
         y = data.subtree_com[self._torso_id][1]
         parts["lane"] = jp.abs(vel[1]) + jp.clip(jp.abs(y) - LANE_HALF_WIDTH_M, 0.0, None) * 5.0
-        hands_fwd = ((data.xpos[self._hand_ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
-        parts["arms"] = jp.sum(jp.clip(jp.abs(hands_fwd) - HAND_REACH_M, 0.0, None))
-        feet_fwd = ((data.xpos[self._foot_ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
-        swing_product = (hands_fwd[0] - hands_fwd[1]) * (feet_fwd[0] - feet_fwd[1])
+        limbs = self._limb_fwd(data)               # hand L, hand R, foot L, foot R
+        parts["arms"] = jp.sum(jp.clip(jp.abs(limbs[:2]) - HAND_REACH_M, 0.0, None))
+        # Arm swing from MOVEMENT: frozen arms score 0 whatever pose they're held in.
+        v = (limbs - info["limb_fwd"]) / self.dt
+        swing_product = (v[0] - v[1]) * (v[2] - v[3])
         parts["arm_swing"] = jp.clip(-swing_product / ARM_SWING_SCALE, -1.0, 1.0)
+        info["limb_fwd"] = limbs
         knee = data.qpos[self._knee_qpos]   # 0 = straight, negative = bent
         bend = jp.clip(-knee, 0.0, KNEE_SWING_TARGET_RAD) / KNEE_SWING_TARGET_RAD
         swing = (~contact) & contact[::-1]          # this foot in the air WHILE the other one is planted
@@ -291,6 +307,13 @@ class RupertRun(mjx_env.MjxEnv):
         ])
 
     # ---------------------------------------------------------------- helpers
+    def _limb_fwd(self, data):
+        """How far each hand and foot is in front of the chest (chest's own forward axis):
+        [left hand, right hand, left foot, right foot]."""
+        torso = data.xmat[self._torso_id]
+        ids = jp.concatenate([self._hand_ids, self._foot_ids])
+        return ((data.xpos[ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
+
     def _feet_on_ground(self, data):
         # Lowest point of each foot capsule, so running on the toes (heel up) still counts as contact.
         ids = self._foot_geom_ids                                    # (2 feet, 2 capsules)

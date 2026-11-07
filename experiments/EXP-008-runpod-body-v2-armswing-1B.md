@@ -31,7 +31,7 @@
   - **Why it pays:** the arm reward only checked whether the arms and legs were "opposite" at each moment. A frozen opposite pose, plus legs that are always in the same order, scores 0.80 out of a possible 1.0 without any swinging.
 - Best clip: `step_0000757923840.mp4` (quick check render, side camera).
 
-## What to change next time
+## What to change next time (done for EXP-009, scoring v7; Tom chose A)
 - **Arm swing based on movement, not position.** Reward hand speed (forwards/backwards) moving opposite to foot speed. Frozen arms then score 0.
-- **Left/right fairness.** Only give stride credit when the two legs take turns leading (each foot lands in front of the other in turn), so a gallop stops paying.
+- **Even steps.** On a closer look, each foot does land in front of the other, but his steps alternate about 0.3 m / 0.75 m, a limp. Stride credit is now scaled by shorter step ÷ longer step (his limp: 0.47).
 - Or move to the style judge (AMP). Tom to decide.
