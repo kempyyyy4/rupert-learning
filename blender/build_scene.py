@@ -39,7 +39,6 @@ COL = {
     "seat": (0.0, 0.35, 0.75),
     "screen": (0.02, 0.02, 0.03),
 }
-BOARD_COLOURS = [(1.0, 0.1, 0.4), (1.0, 0.72, 0.0), (0.0, 0.7, 0.95), (0.5, 0.15, 0.9), (0.2, 0.75, 0.1)]
 CROWD_COLOURS = [(0.9, 0.1, 0.1), (1, 1, 1), (0.1, 0.3, 0.9), (1, 0.8, 0.1), (0.1, 0.6, 0.2),
                  (0.95, 0.45, 0.1), (0.6, 0.2, 0.7), (0.15, 0.15, 0.18), (0.9, 0.5, 0.6)]
 SKIN_TONES = [(0.96, 0.8, 0.69), (0.87, 0.65, 0.5), (0.63, 0.42, 0.29), (0.42, 0.27, 0.18)]
@@ -152,17 +151,13 @@ def build_stadium(coll, screen_text):
     for i in range(1, N_LANES + 1):    # painted lane numbers behind the start line
         text(f"lane_no_{i}", str(i), (-1.2, lane_edge(i) + LANE_W / 2, 0.003), (0, 0, -90), 0.7, line_m, coll, 0.001)
 
-    # plain coloured barrier boards along the far side
-    by = y1 + 1.6
-    board_ms = [material(f"board_{i}", c, rough=0.35, emit=0.35) for i, c in enumerate(BOARD_COLOURS)]
-    for k, x in enumerate(range(int(TRACK_X[0]), int(TRACK_X[1]), 5)):
-        box(f"board_{k}", (4.9, 0.15, 0.9), (x + 2.5, by, 0.45), board_ms[k % len(board_ms)], coll, bevel=0.03)
+    by = y1 + 0.9                                       # signs stand on the grass verge
     # big raised distance signs every 10 m (readable in wide shots); yellow FINISH at 100 m
     white_m = material("sign_white", (1, 1, 1), rough=0.4, emit=0.15)
     fin_m = material("finish_board", (1.0, 0.8, 0.0), rough=0.4, emit=0.3)
     num_m = material("sign_text", (0.03, 0.05, 0.2), rough=0.5)
     post_m = material("sign_post", (0.85, 0.86, 0.88), rough=0.4)
-    sy = by + 0.6
+    sy = by
     for d in range(10, 210, 10):
         fin = d == FINISH_X
         box(f"sign_{d}m", (3.2, 0.14, 1.6), (d, sy, 1.85), fin_m if fin else white_m, coll, bevel=0.04)
@@ -175,14 +170,14 @@ def build_stadium(coll, screen_text):
     stand_m = material("stand", COL["stand"], rough=0.8)
     seat_m = material("seat", COL["seat"], rough=0.6)
     tiers = []
-    for t in range(8):
-        y, z = y1 + 4.0 + 1.6 * t, 0.9 + 0.55 * t
+    for t in range(9):                                  # front row where the ad boards used to be
+        y, z = y1 + 2.4 + 1.6 * t, 0.9 + 0.55 * t
         box(f"stand_{t}", (length, 1.6, z), (mid_x, y + 0.8, z / 2), stand_m, coll)
         box(f"seats_{t}", (length, 0.5, 0.12), (mid_x, y + 1.1, z + 0.06), seat_m, coll)
         tiers.append((y + 0.75, z))
-    box("stand_wall", (length, 0.4, 1.0), (mid_x, y1 + 3.6, 0.5), stand_m, coll)
+    box("stand_wall", (length, 0.4, 1.0), (mid_x, y1 + 2.0, 0.5), stand_m, coll)
     build_crowd(coll, TRACK_X[0], TRACK_X[1], tiers)
-    back_y = y1 + 4.0 + 1.6 * 8 + 0.5
+    back_y = y1 + 2.4 + 1.6 * 9 + 0.5
     box("stand_back", (length, 1.0, 9.0), (mid_x, back_y, 4.5), stand_m, coll)
     box("roof", (length, 16, 0.4), (mid_x, back_y - 6, 9.2), material("roof", (0.92, 0.93, 0.95), rough=0.5), coll)
 
@@ -303,7 +298,7 @@ def main():
     build_rupert(empties, rupert, args.costume)
     build_stadium(stadium, screen_text)
     y_far = lane_edge(N_LANES + 1)
-    board = attempts_board.build_board(stadium, (-4.5, y_far + 2.9, 1.3), digit_h=0.8)
+    board = attempts_board.build_board(stadium, (-4.5, y_far + 1.0, 1.3), digit_h=0.8)
     attempts_board.set_number(board, 1, args.attempts)
     build_world_and_light()
     build_cameras(empties)

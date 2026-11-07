@@ -84,7 +84,7 @@ def wristbands(body, rgb, name="wristband"):
 
 
 def headband(body, rgb, elev=23, back_elev=30, height_deg=12, gap=0.004, name="headband"):
-    """Towelling headband: snug on the forehead, disappearing under the big hair at the sides and back."""
+    """Towelling headband: snug on the forehead, its ends tucked under the hair at the sides."""
     from rupert_model import direction
     m = H.material(name, rgb, rough=0.95, sheen=1.0)
     n = 64
@@ -92,13 +92,13 @@ def headband(body, rgb, elev=23, back_elev=30, height_deg=12, gap=0.004, name="h
     rows = []
     for dz in (-height_deg / 2, height_deg / 2):
         row = []
-        for i in range(n):
-            az = 360 * i / n
+        for i in range(n + 1):
+            az = -105 + 210 * i / n                   # front half only; the ends tuck under the side hair
             e = elev + (back_elev - elev) * (1 - math.cos(math.radians(az))) / 2 + dz
             row.append(bm.verts.new(body.head_surface(direction(e, az), gap)))   # under the hair
         rows.append(row)
     for i in range(n):
-        j = (i + 1) % n
+        j = i + 1
         bm.faces.new((rows[0][i], rows[0][j], rows[1][j], rows[1][i]))     # normals face outward
     band = H.mesh_object(f"rupert_{name}", bm, m, body.coll)
     sol = band.modifiers.new("thick", "SOLIDIFY")
@@ -147,13 +147,13 @@ def trimmed_vest(body, rgb, trim_rgb, name="vest"):
     H.skin_to_skeleton(vest, ["torso", "lower_waist"], body.segs, body.skeleton)
 
 
-def loose_shorts(body, rgb, trim_rgb, hem_below_hip=0.13, split=0.035, waist_z=1.245, name="shorts"):
+def loose_shorts(body, rgb, trim_rgb, hem_below_hip=0.1, split=0.03, waist_z=1.245, name="shorts"):
     """70s satin running shorts: ONE smooth piece of fabric hanging loose off the hips (waist and
     both legs melted together, so no seams or ledges), legs cut open at the hem, hem angled up on
     the outer side like a side split, white piping on the hems and waistband."""
     els = [
-        ("capsule", body.shape_m("lower_waist"), 0.115, body.shape("lower_waist")["half_length"]),
-        ("capsule", body.shape_m("butt"), 0.124, body.shape("butt")["half_length"]),
+        ("capsule", body.shape_m("lower_waist"), 0.106, body.shape("lower_waist")["half_length"]),
+        ("capsule", body.shape_m("butt"), 0.11, body.shape("butt")["half_length"]),
     ]
     hips = {}
     for side, bone in ((-1, "right_thigh"), (1, "left_thigh")):
@@ -162,7 +162,7 @@ def loose_shorts(body, rgb, trim_rgb, hem_below_hip=0.13, split=0.035, waist_z=1
         n = 6
         for i in range(n):                          # flared tube down the thigh, past the hem
             d0, d1 = -0.04 + 0.22 * i / n, -0.04 + 0.22 * (i + 1) / n
-            r = 0.104 + 0.014 * max(0.0, (d0 + d1) / 2) / hem_below_hip
+            r = 0.086 + 0.01 * max(0.0, (d0 + d1) / 2) / hem_below_hip
             a, b = hip - Vector((0, 0, d0)), hip - Vector((0, 0, d1))
             m = Matrix.Translation((a + b) / 2)
             els.append(("capsule", m, r, (a - b).length / 2))
@@ -245,10 +245,10 @@ def loose_shorts(body, rgb, trim_rgb, hem_below_hip=0.13, split=0.035, waist_z=1
 # ---- the outfits -------------------------------------------------------------------
 def ep01_70s(body):
     """EP01 'Learn to run': 70s track star. Orange satin running shorts with white piping,
-    white vest with orange trim, orange towelling headband and wristbands, white tube socks
+    plain white vest, orange towelling headband and wristbands, white tube socks
     with orange stripes, orange running shoes."""
     loose_shorts(body, ORANGE, WHITE)
-    trimmed_vest(body, WHITE, ORANGE)
+    trimmed_vest(body, WHITE, WHITE)          # plain white vest
     headband(body, ORANGE)
     wristbands(body, ORANGE)
     tube_socks(body, WHITE, ORANGE)
@@ -262,6 +262,6 @@ def classic(body):
 
 
 COSTUMES = {
-    "ep01_70s": {"build": ep01_70s, "expression": "happy"},
+    "ep01_70s": {"build": ep01_70s, "expression": "determined"},
     "classic": {"build": classic, "expression": "happy"},
 }
