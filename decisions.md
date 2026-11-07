@@ -49,4 +49,4 @@ Newest first. Each entry: what we decided, and why.
 - [ ] Final check of Rupert's look before modelling
 - [x] GitHub repo name (rupert-learning)
 - [ ] RunPod account + $10 credit, auto-pay off (Tom, 2026-11-07, in progress)
-- [x] Blender installed on the PC (E:Blender, 5.4 Alpha)
+- [x] Blender installed on the PC (E:\Blender, 5.4 Alpha)
