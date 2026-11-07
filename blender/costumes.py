@@ -83,7 +83,7 @@ def wristbands(body, rgb, name="wristband"):
         H.attach(band, body.empties[f"{side}_lower_arm"], p, H.look_along(p, axis=(0, 0, 1)))
 
 
-def headband(body, rgb, elev=23, back_elev=30, height_deg=12, gap=0.004, name="headband"):
+def headband(body, rgb, elev=29, back_elev=33, height_deg=11, gap=0.004, name="headband"):
     """Towelling headband: snug on the forehead, its ends tucked under the hair at the sides."""
     from rupert_model import direction
     m = H.material(name, rgb, rough=0.95, sheen=1.0)
@@ -93,7 +93,7 @@ def headband(body, rgb, elev=23, back_elev=30, height_deg=12, gap=0.004, name="h
     for dz in (-height_deg / 2, height_deg / 2):
         row = []
         for i in range(n + 1):
-            az = -105 + 210 * i / n                   # front half only; the ends tuck under the side hair
+            az = -55 + 110 * i / n                    # forehead only; the ends tuck under the side hair
             e = elev + (back_elev - elev) * (1 - math.cos(math.radians(az))) / 2 + dz
             row.append(bm.verts.new(body.head_surface(direction(e, az), gap)))   # under the hair
         rows.append(row)
@@ -262,6 +262,6 @@ def classic(body):
 
 
 COSTUMES = {
-    "ep01_70s": {"build": ep01_70s, "expression": "determined"},
+    "ep01_70s": {"build": ep01_70s, "expression": "happy"},
     "classic": {"build": classic, "expression": "happy"},
 }

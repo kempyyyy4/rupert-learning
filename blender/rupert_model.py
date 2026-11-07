@@ -25,12 +25,12 @@ HAIR = (0.33, 0.13, 0.05)
 HAIR_DARK = (0.17, 0.06, 0.02)         # caramel brown (#B8785A in the drawings, darkened for the sun)
 INK = (0.012, 0.01, 0.01)         # eyes, brows, mouth and outline
 MOUTH_INSIDE = (0.05, 0.008, 0.01)
-OUTLINE_M = 0.0045                # ink outline thickness (metres); 0 = off
+OUTLINE_M = 0.0                   # ink outline thickness (metres); 0 = off (Tom: no outlines)
 
 HEAD_R = 0.165                    # physics head is 0.098; big cartoon head
 HEAD_LIFT = 0.07                 # head centre sits this far above the physics head centre (cartoon neck)
 # Head shape (Tom's drawings): round dome, flat face, strong square jaw, flat chin
-HEAD_SHAPE = dict(jaw_taper=0.22, jaw_length=1.08, chin_flat=0.86, cheekbone=0.07, face_flat=0.9)
+HEAD_SHAPE = dict(jaw_taper=0.22, jaw_length=1.08, chin_flat=0.86, cheekbone=0.16, face_flat=0.9)
 SKIN_RADIUS = {
     "thigh": 0.072, "shin": 0.052, "upper_arm": 0.045, "lower_arm": 0.037, "hand": 0.05,
     "lower_waist": 0.09, "butt": 0.095, "torso": 0.07,
@@ -190,8 +190,11 @@ def _head_point(d):
         else:
             x *= 1 - 0.1 * s
         z = -_smooth_min(-z * hs["jaw_length"], hs["chin_flat"] * HEAD_R, 0.04)   # flat chin / jawline
-    bump = math.exp(-((z / HEAD_R + 0.15) / 0.14) ** 2) * min(1.0, max(0.0, x / HEAD_R + 0.3))
-    y *= 1 + hs["cheekbone"] * bump                        # cheekbones
+    # cheekbones: full, high (just under the eyes) and wide-set (out at the sides of the face)
+    bump = math.exp(-((z / HEAD_R + 0.03) / 0.17) ** 2) * min(1.0, max(0.0, x / HEAD_R + 0.25))
+    y *= 1 + hs["cheekbone"] * bump
+    if x > 0:
+        x *= 1 + 0.05 * bump
     if x > 0:
         x *= hs["face_flat"]
     return Vector((x, y, z))
@@ -249,26 +252,28 @@ def bar(u0, v0, u1, v1, thick, n=8):
     return top + bot[1:-1]
 
 
-def build_face(body, expression="determined"):
-    """Tom's drawings: narrow almond eyes with a pupil, straight stern brows angled down to the
-    nose, and a straight, slightly smirking mouth. ('happy' = the profile picture's D smile.)"""
-    ink = H.material("rupert_ink", INK, rough=0.35)
+def build_face(body, expression="happy"):
+    """'happy' (profile picture): big oval eyes, raised arched brows, open 'D' smile.
+    'determined' (Tom's drawings): narrow eyes with pupils, stern brows, straight smirk."""
+    ink = H.material("rupert_ink", INK, rough=0.85)   # matte, so eyes never look shiny grey
     white = H.material("rupert_eye_white", (0.92, 0.92, 0.9), rough=0.3)
-    ex, ey = 25, 2                                   # eye position (degrees across, up)
     for side in (1, -1):
         if expression == "happy":
-            face_decal(body, f"eye_{side}", ellipse(0.0135, 0.0195), 0, 27 * side, ink)
+            face_decal(body, f"eye_{side}", ellipse(0.0155, 0.022), 2, 26 * side, ink)
+            arch = [(0.02 * t, 0.0045 * (1 - t * t) + 0.0032) for t in (-1 + i / 6 for i in range(13))]
+            arch += [(u, v - 0.0064 + 0.0025 * (abs(u) / 0.02) ** 2) for u, v in reversed(arch)]
+            face_decal(body, f"brow_{side}", arch, 15, 26 * side, ink)
             continue
+        ex, ey = 25, 2
         face_decal(body, f"eye_rim_{side}", ellipse(0.0215, 0.0105), ey, ex * side, ink, out=0.0012)
         face_decal(body, f"eye_white_{side}", ellipse(0.018, 0.0072), ey, ex * side, white, out=0.0018)
         face_decal(body, f"eye_pupil_{side}", ellipse(0.0062, 0.0062, cx=-0.004 * side), ey, ex * side, ink, out=0.0024)
-        # brow: inner end (towards the nose) lower = determined look
         face_decal(body, f"brow_{side}", bar(-0.02, -0.004 * side, 0.02, 0.004 * side, 0.0065), ey + 12, ex * side, ink)
     if expression == "happy":
-        w, depth = 0.036, 0.03
-        top = [(w * t, 0.004 * t * t) for t in (-1 + i / 6 for i in range(13))]
+        w, depth = 0.042, 0.034
+        top = [(w * t, 0.005 * t * t) for t in (-1 + i / 6 for i in range(13))]
         bottom = [(w * t, -depth * math.sqrt(max(0.0, 1 - t * t))) for t in (1 - i / 8 for i in range(1, 16))]
-        face_decal(body, "mouth", top + bottom, -24, 0, H.material("rupert_mouth", MOUTH_INSIDE, rough=0.4))
+        face_decal(body, "mouth", top + bottom, -25, 0, H.material("rupert_mouth", MOUTH_INSIDE, rough=0.4))
     else:
         face_decal(body, "mouth", bar(-0.032, -0.002, 0.03, 0.004, 0.0048), -27, 2, ink)
 
@@ -328,9 +333,17 @@ def _ribbon(body, bm, v0, v1, width, lift=0.025, flick=0.02, out0=0.026, n=14, c
     lifted near the root for volume, tip flicking outward."""
     centre = Vector((0, 0, HEAD_LIFT))
     pts = []
+    # long locks (front to back) must go OVER the top of the head, not the short way under the chin
+    via = None
+    if v0.angle(v1) > math.radians(110):
+        via = (v0 + v1) + Vector((0, 0, 1.5))
+        via.normalize()
     for i in range(n + 1):
         t = i / n
-        d = v0.slerp(v1, t)
+        if via is None:
+            d = v0.slerp(v1, t)
+        else:
+            d = v0.slerp(via, 2 * t) if t < 0.5 else via.slerp(v1, 2 * t - 1)
         out = out0 + lift * math.sin(math.pi * min(1.0, t * 1.3)) + flick * max(0.0, (t - 0.65) / 0.35) ** 2
         pts.append(body.head_surface(d, out))
     rows = []
@@ -352,26 +365,39 @@ def _ribbon(body, bm, v0, v1, width, lift=0.025, flick=0.02, out0=0.026, n=14, c
 
 
 def build_hair(body):
-    """Chunky swept-back hair (Tom's reference + drawings): locks rise off the forehead and sweep
-    back over the top, sides swept back past the ears, longer at the back with pointed tips
-    flicking out at the nape, a couple of locks framing the face."""
+    """Layered, flicky swept-back hair (Tom's Roblox reference + drawings): three layers of
+    chunky locks, each shorter and higher than the one below, swept back off the forehead;
+    the tips lift and flick outward so the layers show; sides swept back past the ears;
+    longer at the back with flicked-out ends; two locks framing the face."""
+    import random
+    rng = random.Random(11)
+    j = lambda d: rng.uniform(-d, d)                                     # small natural variation
     bm = bmesh.new()
-    _cap(body, bm)
-    for az in range(-48, 49, 12):                                       # top: swept straight back
-        _ribbon(body, bm, direction(37, az), direction(-36 - 8 * abs(az) / 48, 180 - 1.3 * az),
-                width=0.07, lift=0.032, flick=0.02)
-    for az in (-30, -10, 10, 30):                                        # second layer on top
-        _ribbon(body, bm, direction(55, az), direction(-12, 180 - 1.7 * az), width=0.065,
-                lift=0.024, flick=0.03, out0=0.036)
+    _cap(body, bm, out=0.008)
+    # layer 1 (underneath): long, from the hairline right back to the nape
+    for az in range(-50, 51, 10):
+        _ribbon(body, bm, direction(37 + j(2), az + j(3)), direction(-40 - 8 * abs(az) / 50 + j(4), 180 - 1.3 * az + j(6)),
+                width=0.055, lift=0.03, flick=0.035, out0=0.014)
+    # layer 2: starts further back, ends mid-back, tips flick up and out
+    for az in range(-45, 46, 15):
+        _ribbon(body, bm, direction(48 + j(3), az + j(4)), direction(-5 + j(6), 180 - 1.5 * az + j(8)),
+                width=0.05, lift=0.03, flick=0.05, out0=0.028)
+    # layer 3 (on top): short crown locks, tips flicking up
+    for az in (-36, -12, 12, 36):
+        _ribbon(body, bm, direction(63 + j(3), az + j(4)), direction(22 + j(5), 180 - 1.8 * az + j(8)),
+                width=0.048, lift=0.022, flick=0.055, out0=0.042, n=12)
     for side in (1, -1):
-        for k in range(3):                                               # sides, back past the ears
-            _ribbon(body, bm, direction(26 - 9 * k, side * (50 + 9 * k)), direction(-42 - 5 * k, side * (148 + 8 * k)),
-                    width=0.06, lift=0.012, flick=0.022)
-        _ribbon(body, bm, direction(40, side * 40), direction(-36, side * 90), width=0.05,   # framing the face
-                lift=0.01, flick=0.018, out0=0.024)
-    for k in range(-2, 3):                                               # back: long, tips flick out
-        _ribbon(body, bm, direction(30, 180 + 22 * k), direction(-58, 180 + 26 * k), width=0.07,
-                lift=0.01, flick=0.024, out0=0.028)
+        for k in range(3):                       # sides, long underneath, swept back past the ears
+            _ribbon(body, bm, direction(24 - 9 * k, side * (52 + 9 * k)), direction(-44 - 5 * k + j(4), side * (148 + 8 * k)),
+                    width=0.05, lift=0.012, flick=0.04, out0=0.016)
+        for k in range(2):                       # sides, shorter layer on top, flicking out
+            _ribbon(body, bm, direction(34 - 8 * k, side * (62 + 10 * k)), direction(-14 - 6 * k + j(4), side * (130 + 8 * k)),
+                    width=0.046, lift=0.016, flick=0.05, out0=0.03)
+        _ribbon(body, bm, direction(40, side * 40), direction(-36, side * 90), width=0.045,   # framing the face
+                lift=0.01, flick=0.03, out0=0.022)
+    for k in range(-3, 4):                       # back: long, alternating lengths, ends flick out
+        _ribbon(body, bm, direction(30, 180 + 17 * k + j(4)), direction(-58 + 8 * (k % 2) + j(3), 180 + 21 * k + j(5)),
+                width=0.055, lift=0.012, flick=0.05, out0=0.02)
     hair = H.mesh_object("rupert_hair", bm, H.node_material("rupert_hair", _hair_streaks, rough=0.55, sheen=0.3), body.coll)
     sol = hair.modifiers.new("thick", "SOLIDIFY")
     sol.thickness, sol.offset = 0.01, -1.0
