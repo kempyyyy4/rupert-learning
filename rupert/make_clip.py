@@ -58,7 +58,7 @@ def main():
     scripts_time = max(p.stat().st_mtime for p in (ROOT / "blender").glob("*.py"))
     if a.rebuild or not blend.exists() or blend.stat().st_mtime < scripts_time:
         run([BLENDER, "-b", "--python", ROOT / "blender" / "build_scene.py", "--", npz,
-             "--attempt", a.replay, "--out", blend, "--costume", a.costume, "--screen", f"ATTEMPT {attempt:,}"])
+             "--attempt", a.replay, "--out", blend, "--costume", a.costume, "--screen", f"ATTEMPT {attempt:,}", "--attempts", attempt])
 
     first = 1 + int(round(a.start * FPS))
     last = first + int(round(a.seconds * FPS)) - 1

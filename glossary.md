@@ -64,3 +64,5 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 - **HUD / overlay**: graphics laid over the video, like the attempt counter in the corner.
 - **Metaballs**: blobby 3D shapes that melt into each other when close. We use them to make Rupert's smooth skin, clothes and hair.
 - **Costume**: Rupert's outfit for one video. Each video gets its own (`blender/costumes.py`).
+- **Ink outline (inverted hull)**: the black outline round Rupert, made from a slightly bigger, inside-out black copy of each part. Gives the hand-drawn channel look.
+- **Seven-segment digits**: the classic LED/LCD number shape made of 7 bars, as on stadium timing boards.

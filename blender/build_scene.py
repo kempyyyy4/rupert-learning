@@ -24,6 +24,7 @@ sys.path.insert(0, str(HERE))
 from bl_helpers import box, material, mesh_object, node_material, text  # noqa: E402
 from import_replay import import_replay  # noqa: E402
 from rupert_model import build_rupert  # noqa: E402
+import attempts_board  # noqa: E402
 
 random.seed(7)
 
@@ -217,14 +218,14 @@ def build_world_and_light():
     out = nt.nodes.new("ShaderNodeOutputWorld")
     ramp.color_ramp.elements[0].position, ramp.color_ramp.elements[0].color = 0.0, (0.75, 0.9, 1.0, 1)
     ramp.color_ramp.elements[1].position, ramp.color_ramp.elements[1].color = 0.5, (0.12, 0.42, 0.95, 1)
-    bg.inputs["Strength"].default_value = 1.0
+    bg.inputs["Strength"].default_value = 0.7
     nt.links.new(coord.outputs["Generated"], sep.inputs[0])
     nt.links.new(sep.outputs["Z"], ramp.inputs["Fac"])
     nt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
     nt.links.new(bg.outputs[0], out.inputs[0])
 
     sun = bpy.data.lights.new("sun", "SUN")
-    sun.energy = 4.5
+    sun.energy = 5.0
     sun.angle = math.radians(4)          # soft-edged shadows
     obj = bpy.data.objects.new("sun", sun)
     obj.rotation_euler = (math.radians(42), 0, math.radians(35))
@@ -257,6 +258,16 @@ def build_cameras(empties):
 
     main = camera("cam_three_quarter", (4.0, -6.5, 1.7), 50)
     camera("cam_side", (0.0, -7.5, 1.2), 50)
+    # wide, fixed shot of the start area and the attempts board (for sped-up training montages)
+    wide = bpy.data.objects.new("cam_wide_start", bpy.data.cameras.new("cam_wide_start"))
+    wide.data.lens = 30
+    wide.location = (2.0, -13.0, 4.2)
+    look = bpy.data.objects.new("cam_wide_target", None)
+    look.location = (5.0, 3.0, 1.2)
+    scene.collection.objects.link(look)
+    t = wide.constraints.new("TRACK_TO")
+    t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
+    scene.collection.objects.link(wide)
     scene.camera = main
 
 
@@ -289,6 +300,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--screen", default="TRAINING", help="text on the stadium's big screen")
     ap.add_argument("--costume", default="ep01_70s")
+    ap.add_argument("--attempts", type=int, default=0, help="number on the stadium attempts board")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:])
     replay, attempt, out, screen_text = args.replay, args.attempt, args.out, args.screen
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -299,6 +311,9 @@ def main():
     bpy.context.scene.collection.children.link(stadium)
     build_rupert(empties, rupert, args.costume)
     build_stadium(stadium, screen_text)
+    y_far = lane_edge(N_LANES + 1)
+    board = attempts_board.build_board(stadium, (9.0, y_far + 2.7, 1.3), digit_h=0.8)
+    attempts_board.set_number(board, 1, args.attempts)
     build_world_and_light()
     build_cameras(empties)
     render_settings()
