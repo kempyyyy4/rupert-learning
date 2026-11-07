@@ -33,7 +33,7 @@ Full plan: [Rupert's AI Simulation Platform: Plan](https://claude.ai/artifact/Ti
 - `experiments/` — one note per training run (use `_template.md`)
 - `episodes/` — one note per video
 - `rupert/` — the Python app: `body.py` (builds Rupert's body → `assets/rupert.xml`), `env.py` (track + scoring), `train.py`, `evaluate.py` (per-attempt stats + replay), `render.py`, `check_install.py`, `view_humanoid.py`
-- `blender/` — Blender scripts (replay import)
+- `blender/` — Blender scripts: `build_scene.py` (track + cartoon Rupert + camera → `renders/*.blend`), `import_replay.py`, `rupert_shapes.json` (from `python -m rupert.export_shapes`)
 - `cloud/` — rented-GPU run script (self-deleting pod)
 - `notebooks/` — Colab notebook
 - `docs/body-sources.md` — sources for every body number; TO VERIFY items can't go on screen

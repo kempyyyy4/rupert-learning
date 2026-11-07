@@ -4,6 +4,7 @@ Newest first. Each entry: what we decided, and why.
 
 ## 2026-11-07
 - **Stabler training after EXP-005.** Scoring v3 worked: at 345M steps Rupert ran with a real stride (100 m in 15.2 s). Then the learning collapsed for good. Learning rate is now 3e-4 (was 1e-3), with a cap on how big each update can be (gradient clipping, 1.0). Slower but safer; the collapse cost us 650M wasted steps.
+- **Blender scene started (build step 5).** Claude runs Blender in the background (`E:\Blender\blender.exe`, 5.4 Alpha; switch to the stable version if it crashes), so Tom doesn't link anything; he opens the saved `.blend`. Rupert is "a touch cartoony": head 1.45× bigger, mitten hands, chunky orange shoes and an orange bobble beanie, no face. Limb lengths and joints exactly match the physics body, so it's still honestly the body that learned. The look is bright and eye-catching: blue track, green grass, purple stands, rainbow boards, a distance board every 10 m and a yellow FINISH board. Standard colour (AgX greyed it out).
 - **Knee rule (scoring v4).** Tom spotted that Rupert runs on straight legs (measured: left knee bends only 12°, both lock past straight). Added a reward for bending the swinging leg's knee (up to ~90°) and a penalty for locking past straight. If this still looks robotic, the next step is the style judge trained on real human running.
 - **Scoring v3 after EXP-004** (stiff-legged bouncing): strides scored by distance each foot travels, relaxed 'tall' range, arm penalty. Next run is full length (1B steps) because a 4090 does it in ~85 min for well under £2.
 - **Cloud installs use exact versions** (`requirements-lock.txt`, frozen from Tom's working PC, Python 3.14, installed without re-solving). First RunPod attempt installed MuJoCo 4.0 and a broken Playground when asked for "latest". Cost: a few pence.
@@ -48,4 +49,4 @@ Newest first. Each entry: what we decided, and why.
 - [ ] Final check of Rupert's look before modelling
 - [x] GitHub repo name (rupert-learning)
 - [ ] RunPod account + $10 credit, auto-pay off (Tom, 2026-11-07, in progress)
-- [ ] Blender installed on the PC
+- [x] Blender installed on the PC (E:Blender, 5.4 Alpha)

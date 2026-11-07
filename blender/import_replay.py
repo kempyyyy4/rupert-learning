@@ -32,8 +32,8 @@ def load_args():
     return replay, attempt
 
 
-def main():
-    path, attempt = load_args()
+def import_replay(path, attempt=0):
+    """Creates the animated empties. Returns {body name: empty}."""
     data = np.load(path)
     xpos = data["xpos"][:, attempt]      # (frames, bodies, 3)
     xquat = data["xquat"][:, attempt]    # (frames, bodies, 4)  w, x, y, z
@@ -50,6 +50,7 @@ def main():
     scene.render.fps = fps
     scene.frame_start, scene.frame_end = 1, n_frames
 
+    empties = {}
     coll = bpy.data.collections.new(f"rupert_replay_attempt{attempt}")
     scene.collection.children.link(coll)
     for b, name in enumerate(names):
@@ -60,12 +61,15 @@ def main():
         obj.empty_display_size = 0.1
         obj.rotation_mode = "QUATERNION"
         coll.objects.link(obj)
+        empties[name] = obj
         for f in range(n_frames):
             obj.location = [float(v) for v in xpos[f, b]]
             obj.rotation_quaternion = [float(v) for v in xquat[f, b]]
             obj.keyframe_insert("location", frame=f + 1)
             obj.keyframe_insert("rotation_quaternion", frame=f + 1)
     print(f"Imported {path}, attempt {attempt}: {n_frames} frames at {fps} fps")
+    return empties
 
 
-main()
+if __name__ == "__main__":
+    import_replay(*load_args())
