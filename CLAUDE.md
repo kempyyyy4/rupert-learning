@@ -33,7 +33,7 @@ Full plan: [Rupert's AI Simulation Platform: Plan](https://claude.ai/artifact/Ti
 - `experiments/` — one note per training run (use `_template.md`)
 - `episodes/` — one note per video
 - `rupert/` — the Python app: `body.py` (builds Rupert's body → `assets/rupert.xml`), `env.py` (track + scoring), `train.py`, `evaluate.py` (per-attempt stats + replay), `render.py` (quick check video), `make_clip.py` (finished-look clip: Blender + costume + attempt counter), `attempts.py`, `hud.py`, `export_shapes.py`, `check_install.py`, `view_humanoid.py`
-- `blender/` — Blender scripts: `build_scene.py` (stadium + cameras), `rupert_model.py` (skin, face, hair), `costumes.py` (one outfit per video), `bl_helpers.py`, `import_replay.py`, `rupert_shapes.json` (from `python -m rupert.export_shapes`). Blender is at `E:\Blenderlender.exe`; Claude runs it in the background.
+- `blender/` — Blender scripts: `build_scene.py` (stadium + cameras), `rupert_model.py` (skin, face, hair), `costumes.py` (one outfit per video), `bl_helpers.py`, `import_replay.py`, `rupert_shapes.json` (from `python -m rupert.export_shapes`). Blender is at `E:\Blender\blender.exe`; Claude runs it in the background.
 - `cloud/` — rented-GPU run script (self-deleting pod)
 - `notebooks/` — Colab notebook
 - `docs/body-sources.md` — sources for every body number; TO VERIFY items can't go on screen
