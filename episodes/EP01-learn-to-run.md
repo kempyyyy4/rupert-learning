@@ -22,6 +22,7 @@ Rupert goes from collapsing to running, ending on his first 100m time trial. The
 
 ## Experiments
 - EXP-001: local smoke test, pipeline works (CPU, 17 min)
+- EXP-006: stable training (no permanent collapse) but he learned to **run on his knees** (best 20.8 s). Also a 'stand still and survive' phase at 20-40M. Great comedy clip: step_0000728432640.
 - EXP-005: first full 1B run (scoring v3). **Real running stride at 345M: 100 m in 15.2 s, 8/8 attempts.** Then training collapsed (falls at ~2.7 s); fixed with a slower learning rate. Best clip: step_0000345047040.
 - EXP-004: first RunPod run (4090, 8.5 min for 100M steps). Upright now, but stiff-legged bouncing with a 'zombie arm'. Best 100 m 21.8 s.
 - EXP-003: rebuilt Rupert on Colab. Learned to finish 100 m (best 19.2 s) but as a hunched shuffle. Great early-stage clips (collapse, lunge-and-fall, first shuffle).

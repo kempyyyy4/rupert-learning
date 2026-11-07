@@ -17,9 +17,10 @@ Scoring (all per control step, 50 times a second). Weights are in REWARD_WEIGHTS
   - jerk          : sudden changes in muscle commands (jitter)
   - lane          : drifting sideways out of the lane, and sideways speed
   - arms          : a hand held far in front of / behind the chest (v2 ran with a 'zombie arm')
-  + knees         : swinging leg's knee bent (up to ~90 deg), minus a penalty for locking a
+  + knees         : swinging leg's knee bent (up to ~90 deg) while the OTHER foot is planted, minus a penalty for locking a
                     knee past straight. v3 (run rupert_20261106_2220) ran on near-straight legs.
-The attempt ENDS if he falls (head below FALL_HEAD_HEIGHT_M).
+The attempt ENDS if he falls: head below FALL_HEAD_HEIGHT_M, or a knee or hand near the ground
+(no knee-running or crawling: run rupert_20261107_1159 learned to run on its knees).
 
 Muscles: each joint has a peak torque (rupert/body.py), and like real muscle it
 gets weaker the faster the joint is already moving in that direction
@@ -39,7 +40,8 @@ from mujoco_playground._src.dm_control_suite import common
 XML_PATH = Path(__file__).parent / "assets" / "rupert.xml"
 
 SPEED_CAP_MS = 12.5       # Bolt's peak was ~12.4 m/s; no extra credit beyond this
-FALL_HEAD_HEIGHT_M = 1.2  # standing head height is ~1.75 m
+FALL_HEAD_HEIGHT_M = 1.3  # standing head height is ~1.75 m; kneeling upright is ~1.3
+LOW_LIMB_M = 0.22         # a knee joint or hand this close to the ground counts as a fall
 TALL_HEAD_HEIGHT_M = (1.40, 1.62)  # v2 used (1.35, 1.65) and ran stiff-legged; real running bobs a little  # posture factor goes from 0.3 at the low end to 1.0 at the high end
 LANE_HALF_WIDTH_M = 0.61  # standard lane is 1.22 m wide
 
@@ -120,6 +122,7 @@ class RupertRun(mjx_env.MjxEnv):
         ])
         self._qpos0 = jp.array(m.qpos0)
         self._knee_qpos = jp.array([m.jnt_qposadr[m.joint(j).id] for j in KNEE_ORDER])
+        self._shin_ids = jp.array([m.body("right_shin").id, m.body("left_shin").id])   # body origin = knee joint
 
     # ------------------------------------------------------------------ reset
     def reset(self, rng: jax.Array) -> mjx_env.State:
@@ -163,7 +166,8 @@ class RupertRun(mjx_env.MjxEnv):
         info = dict(state.info)
         reward, parts, info = self._get_reward(data, action, info)
 
-        fell = self._head_height(data) < FALL_HEAD_HEIGHT_M
+        low = jp.concatenate([data.xpos[self._shin_ids, 2], data.xpos[self._hand_ids, 2]])
+        fell = (self._head_height(data) < FALL_HEAD_HEIGHT_M) | jp.any(low < LOW_LIMB_M)
         nan = jp.isnan(data.qpos).any() | jp.isnan(data.qvel).any()
         done = (fell | nan).astype(float)
 
@@ -216,7 +220,8 @@ class RupertRun(mjx_env.MjxEnv):
         parts["arms"] = jp.sum(jp.clip(jp.abs(hands_fwd) - HAND_REACH_M, 0.0, None))
         knee = data.qpos[self._knee_qpos]   # 0 = straight, negative = bent
         bend = jp.clip(-knee, 0.0, KNEE_SWING_TARGET_RAD) / KNEE_SWING_TARGET_RAD
-        parts["knees"] = jp.sum(jp.where(contact, 0.0, bend)) - 3.0 * jp.sum(jp.clip(knee, 0.0, None))
+        swing = (~contact) & contact[::-1]          # this foot in the air WHILE the other one is planted
+        parts["knees"] = jp.sum(jp.where(swing, bend, 0.0)) - 3.0 * jp.sum(jp.clip(knee, 0.0, None))
 
         reward = sum(REWARD_WEIGHTS[k] * v for k, v in parts.items())
         return reward, parts, info
