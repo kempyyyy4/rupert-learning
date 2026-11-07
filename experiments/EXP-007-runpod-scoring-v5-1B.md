@@ -30,7 +30,7 @@
   - ~32M: upright for 25 s but covering only ~36 m, so a slow walk or shuffle. Possibly his "first walk".
 - Best clip: `step_0000875888640.mp4` (quick check render, side camera).
 
-## What to change next time (needs Tom's agreement)
+## What to change next time (done for EXP-008: Tom agreed body v2 + arm-swing reward, 2026-11-07)
 - **Arms:** reward arms swinging opposite to the legs, instead of only penalising far-out hands.
 - **Body:** the body is likely too strong and too quick, because a beginner shouldn't reach Bolt's speed. Check strengths and muscle speeds against sources and add a short muscle switch-on delay. Aim for an "ordinary fit bloke" ceiling (100 m in roughly 12–14 s) so the gap to Bolt survives for EP02.
 - **Fallback:** if rewards still can't produce a human-looking run, use a style judge that has watched real runners (motion capture).

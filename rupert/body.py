@@ -27,16 +27,40 @@ SEGMENT_MASS_PCT = {
     "upper_arm": 2.71, "lower_arm": 1.62, "hand": 0.61,
 }
 
-# --- Peak joint torques (N·m), strong trained adult. TO VERIFY against sources ---
-# These are the most each joint motor can ever push. Force–velocity limits are
-# applied on top in rupert/env.py (faster joint = less torque, like real muscle).
+# --- Peak joint torques (N·m): an ordinary young man (body v2, 2026-11-07) ---------
+# The most each joint motor can ever push. Force-velocity limits and muscle switch-on
+# delay are applied on top in rupert/env.py.
+# Hip, knee and ankle push differently each way: (positive direction, negative direction).
+#   hip_y:   (+) extension, thigh back   / (-) flexion, thigh forward
+#   knee:    (+) extension, straighten   / (-) flexion, bend
+#   ankle_y: (+) plantarflex, toes down  / (-) dorsiflex, toes up
+# Source: Harbo, Brincks & Andersen (2012), men under 30 (mean 24 y, 1.79 m, 74 kg),
+# Table 5. Isometric values used directly; actions measured only at 60 deg/s are x1.15
+# to estimate isometric (the paper's own isometric/60 deg/s ratios are 1.08 and 1.23).
+# See docs/body-sources.md.
 JOINT_TORQUE_NM = {
+    "abdomen_y": 200, "abdomen_z": 100, "abdomen_x": 150,   # TO VERIFY
+    "hip_x": 150, "hip_z": 80,                              # TO VERIFY
+    "hip_y": (227, 167),
+    "knee": (265, 122),
+    "ankle_y": (147, 44), "ankle_x": 60,                    # ankle_x TO VERIFY
+    "shoulder1": 60, "shoulder2": 60, "elbow": 50,
+}
+# Body v1 (runs before 2026-11-07, EXP-001..007): "strong trained adult", same both ways.
+# Kept so old checkpoints can still be replayed with the body they learned in.
+JOINT_TORQUE_NM_V1 = {
     "abdomen_y": 200, "abdomen_z": 100, "abdomen_x": 150,
     "hip_x": 150, "hip_z": 80, "hip_y": 300,
     "knee": 250,
     "ankle_y": 250, "ankle_x": 60,
     "shoulder1": 80, "shoulder2": 80, "elbow": 60,
 }
+
+
+def peak_torques(key, version=2):
+    """(positive-direction, negative-direction) peak torque for a joint type."""
+    t = (JOINT_TORQUE_NM if version >= 2 else JOINT_TORQUE_NM_V1)[key]
+    return t if isinstance(t, tuple) else (t, t)
 
 
 def _scale_attr(el, name, k):
@@ -77,10 +101,11 @@ def build():
         for g in geoms:
             g.set("mass", f"{mass / len(geoms):.4g}")
 
-    # 3. Motor strengths: gear = peak torque, since control is -1..1.
+    # 3. Motor strengths: gear = the stronger direction's peak torque (control is -1..1).
+    #    env.py scales the weaker direction down.
     for m in root.find("actuator"):
         key = _segment(m.get("joint"))
-        m.set("gear", str(JOINT_TORQUE_NM[key]))
+        m.set("gear", str(max(peak_torques(key))))
 
     # 4. Physics accuracy (tested 2026-11-06): 4 solver iterations hit the limit on ~37%
     #    of steps; 10 never did. Slightly stiffer contacts reduce sinking into the floor.

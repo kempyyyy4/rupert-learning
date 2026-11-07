@@ -17,15 +17,23 @@ Scoring (all per control step, 50 times a second). Weights are in REWARD_WEIGHTS
   - jerk          : sudden changes in muscle commands (jitter)
   - lane          : drifting sideways out of the lane, and sideways speed
   - arms          : a hand held far in front of / behind the chest (v2 ran with a 'zombie arm')
+  + arm_swing     : arms swinging opposite to the legs (left hand forward while the right foot is
+                    forward). EXP-007 clamped one arm to his chest ('T-rex scuttle'), because the
+                    'arms' penalty alone made frozen arms the cheapest option.
   + knees         : swinging leg's knee bent (up to ~90 deg) while the OTHER foot is planted, minus a penalty for locking a
                     knee past straight. v3 (run rupert_20261106_2220) ran on near-straight legs.
 The attempt ENDS if he falls: head below FALL_HEAD_HEIGHT_M, or a knee or hand near the ground
 (no knee-running or crawling: run rupert_20261107_1159 learned to run on its knees).
 
-Muscles: each joint has a peak torque (rupert/body.py), and like real muscle it
-gets weaker the faster the joint is already moving in that direction
-(linear force-velocity limit, MAX_JOINT_SPEED).
+Muscles (body v2): each joint has a peak torque per direction (rupert/body.py, an ordinary
+young man), and like real muscle it
+  - gets weaker the faster the joint is already moving in that direction
+    (linear force-velocity limit, MAX_JOINT_SPEED), and
+  - takes time to switch on and off (first-order activation, MUSCLE_ON_S / MUSCLE_OFF_S).
+EXP-007 (body v1: strong, instant muscles) ran 100 m in 10.0 s at 6+ steps a second.
+Old runs are replayed with the body they learned in: see load_for_run().
 """
+import json
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -36,6 +44,8 @@ from ml_collections import config_dict
 from mujoco import mjx
 from mujoco_playground._src import mjx_env
 from mujoco_playground._src.dm_control_suite import common
+
+from rupert import body as rupert_body
 
 XML_PATH = Path(__file__).parent / "assets" / "rupert.xml"
 
@@ -56,12 +66,21 @@ REWARD_WEIGHTS = dict(
     lane=-0.3,
     arms=-1.0,
     knees=0.3,
+    arm_swing=0.5,
 )
 # EXP-005 ran with near-straight legs (left knee bent only 12 deg, both pushed past straight).
 # Real runners fold the swinging knee to ~90 deg or more.
 KNEE_SWING_TARGET_RAD = 1.6   # ~90 deg: full credit for this much bend while the foot is in the air
 KNEE_ORDER = ("right_knee", "left_knee")   # same order as FOOT_GEOMS
 HAND_REACH_M = 0.35   # hands further than this in front of / behind the chest are penalised
+# arm_swing = -(left hand - right hand forward) x (left foot - right foot forward) / this, capped at +-1.
+# A good running arm swing (hands ~+-0.2 m, feet ~+-0.4 m) averages about 1. Frozen arms average 0.
+ARM_SWING_SCALE = 0.15
+
+# Muscle switch-on / switch-off time constants (s): Zajac (1989), Winters (1990), as used by
+# OpenSim's first-order activation model. Body v1 had instant muscles.
+MUSCLE_ON_S = 0.010
+MUSCLE_OFF_S = 0.040
 
 # rad/s at which a joint's torque drops to zero (concentric). TO VERIFY against sources.
 MAX_JOINT_SPEED = {"hip_y": 25.0, "knee": 35.0, "ankle_y": 35.0, "default": 20.0}
@@ -81,6 +100,7 @@ def default_config() -> config_dict.ConfigDict:
         naconmax=200_000,
         njmax=250,
         init_noise=0.05,
+        body_version=2,   # 1 = EXP-001..007 (strong, instant muscles); 2 = ordinary young man
     )
 
 
@@ -93,10 +113,11 @@ def _joint_key(joint_name):
 class RupertRun(mjx_env.MjxEnv):
     def __init__(
         self,
-        config: config_dict.ConfigDict = default_config(),
+        config: Optional[config_dict.ConfigDict] = None,
         config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
     ):
-        super().__init__(config, config_overrides)
+        # Fresh settings each time: a shared default gets changed in place by overrides.
+        super().__init__(config if config is not None else default_config(), config_overrides)
         self._xml_path = XML_PATH.as_posix()
         self._model_assets = common.get_assets()
         self._mj_model = mujoco.MjModel.from_xml_string(XML_PATH.read_text(), self._model_assets)
@@ -116,7 +137,17 @@ class RupertRun(mjx_env.MjxEnv):
 
         joint_ids = m.actuator_trnid[:, 0]
         self._act_dof = jp.array(m.jnt_dofadr[joint_ids])
+        self._version = int(self._config.body_version)
+        peaks = [rupert_body.peak_torques(_joint_key(m.joint(j).name), self._version) for j in joint_ids]
+        m.actuator_gear[:, 0] = [max(p) for p in peaks]   # v1 runs get their old strengths back
+        self._mjx_model = mjx.put_model(m, impl=self._config.impl)
         self._gear = jp.array(m.actuator_gear[:, 0])
+        self._pos_scale = jp.array([p[0] / max(p) for p in peaks])   # weaker direction scaled down
+        self._neg_scale = jp.array([p[1] / max(p) for p in peaks])
+        on, off = (MUSCLE_ON_S, MUSCLE_OFF_S) if self._version >= 2 else (0.0, 0.0)
+        self._on_rate = min(self.sim_dt / on, 1.0) if on else 1.0
+        self._off_rate = min(self.sim_dt / off, 1.0) if off else 1.0
+        self._foot_ids = jp.array([m.body("left_foot").id, m.body("right_foot").id])   # same order as _hand_ids
         self._act_max_speed = jp.array([
             MAX_JOINT_SPEED.get(_joint_key(m.joint(j).name), MAX_JOINT_SPEED["default"]) for j in joint_ids
         ])
@@ -138,6 +169,7 @@ class RupertRun(mjx_env.MjxEnv):
         info = {
             "rng": rng,
             "last_action": jp.zeros(self.action_size),
+            "activation": jp.zeros(self.action_size),
             "air_time": jp.zeros(2),
             "last_foot": jp.array(-1.0),
             "liftoff_x": jp.zeros(2),
@@ -149,21 +181,31 @@ class RupertRun(mjx_env.MjxEnv):
         return mjx_env.State(data, obs, jp.zeros(()), jp.zeros(()), metrics, info)
 
     # ------------------------------------------------------------------- step
-    def _muscle_ctrl(self, data, action):
-        """Force-velocity limit: less torque available the faster the joint moves the same way."""
+    def _muscle_ctrl(self, data, act):
+        """Muscle activation -> motor control: per-direction strength, and less torque
+        available the faster the joint is already moving the same way (force-velocity)."""
         w = data.qvel[self._act_dof]
-        same_dir = jp.sign(action) == jp.sign(w)
+        same_dir = jp.sign(act) == jp.sign(w)
         factor = jp.where(same_dir, jp.clip(1.0 - jp.abs(w) / self._act_max_speed, 0.0, 1.0), 1.0)
-        return action * factor
+        strength = jp.where(act > 0, self._pos_scale, self._neg_scale)
+        return act * factor * strength
+
+    def _activate(self, act, action):
+        """Muscles switch on fast and off slowly; they can't jump straight to a new command."""
+        rate = jp.where(jp.abs(action) > jp.abs(act), self._on_rate, self._off_rate)
+        return act + (action - act) * rate
 
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
-        def substep(data, _):
-            ctrl = self._muscle_ctrl(data, action)
+        def substep(carry, _):
+            data, act = carry
+            act = self._activate(act, action)
+            ctrl = self._muscle_ctrl(data, act)
             data = mjx.step(self.mjx_model, data.replace(ctrl=ctrl))
-            return data, None
+            return (data, act), None
 
-        data = jax.lax.scan(substep, state.data, (), self.n_substeps)[0]
+        data, act = jax.lax.scan(substep, (state.data, state.info["activation"]), (), self.n_substeps)[0]
         info = dict(state.info)
+        info["activation"] = act
         reward, parts, info = self._get_reward(data, action, info)
 
         low = jp.concatenate([data.xpos[self._shin_ids, 2], data.xpos[self._hand_ids, 2]])
@@ -210,7 +252,7 @@ class RupertRun(mjx_env.MjxEnv):
         info["last_foot"] = jp.where(touchdown.any(), jp.argmax(touchdown).astype(float), info["last_foot"])
         info["air_time"] = jp.where(contact, 0.0, air + self.dt)
 
-        torque = self._muscle_ctrl(data, action) * self._gear
+        torque = self._muscle_ctrl(data, info["activation"]) * self._gear
         joint_speed = data.qvel[self._act_dof]
         parts["energy"] = jp.sum(jp.abs(torque * joint_speed)) / self._body_mass
         parts["jerk"] = jp.mean(jp.square(action - info["last_action"]))
@@ -218,6 +260,9 @@ class RupertRun(mjx_env.MjxEnv):
         parts["lane"] = jp.abs(vel[1]) + jp.clip(jp.abs(y) - LANE_HALF_WIDTH_M, 0.0, None) * 5.0
         hands_fwd = ((data.xpos[self._hand_ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
         parts["arms"] = jp.sum(jp.clip(jp.abs(hands_fwd) - HAND_REACH_M, 0.0, None))
+        feet_fwd = ((data.xpos[self._foot_ids] - data.xpos[self._torso_id]) @ torso)[:, 0]
+        swing_product = (hands_fwd[0] - hands_fwd[1]) * (feet_fwd[0] - feet_fwd[1])
+        parts["arm_swing"] = jp.clip(-swing_product / ARM_SWING_SCALE, -1.0, 1.0)
         knee = data.qpos[self._knee_qpos]   # 0 = straight, negative = bent
         bend = jp.clip(-knee, 0.0, KNEE_SWING_TARGET_RAD) / KNEE_SWING_TARGET_RAD
         swing = (~contact) & contact[::-1]          # this foot in the air WHILE the other one is planted
@@ -242,6 +287,7 @@ class RupertRun(mjx_env.MjxEnv):
             self._feet_on_ground(data).astype(float),
             info["air_time"],
             info["last_action"],
+            *([info["activation"]] if self._version >= 2 else []),   # v1 brains never saw this
         ])
 
     # ---------------------------------------------------------------- helpers
@@ -274,6 +320,15 @@ class RupertRun(mjx_env.MjxEnv):
     @property
     def mjx_model(self) -> mjx.Model:
         return self._mjx_model
+
+
+def load_for_run(run_dir, task: str = "Rupert100m", config_overrides=None):
+    """The environment a saved run was trained in (same body version), for replaying it."""
+    cfg = Path(run_dir) / "config.json"
+    env_cfg = (json.loads(cfg.read_text()).get("env") or {}) if cfg.exists() else {}
+    if task == "Rupert100m":
+        config_overrides = {"body_version": env_cfg.get("body_version", 1), **(config_overrides or {})}
+    return load(task, config_overrides)
 
 
 def load(task: str = "Rupert100m", config_overrides=None):

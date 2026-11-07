@@ -111,7 +111,7 @@ def main():
     run = Path(args.run)
     out = run / "eval"
     out.mkdir(exist_ok=True)
-    env = rupert_env.load(args.task, {"episode_length": int(args.seconds / 0.02)})
+    env = rupert_env.load_for_run(args.run, args.task, {"episode_length": int(args.seconds / 0.02)})
     n_steps = int(args.seconds / env.dt)
     rollout = make_rollout(env, args.attempts, n_steps, run)
     body_names = [env.mj_model.body(b).name for b in range(env.mj_model.nbody)]

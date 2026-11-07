@@ -66,3 +66,6 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 - **Costume**: Rupert's outfit for one video. Each video gets its own (`blender/costumes.py`).
 - **Ink outline (inverted hull)**: the black outline round Rupert, made from a slightly bigger, inside-out black copy of each part. Gives the hand-drawn channel look.
 - **Seven-segment digits**: the classic LED/LCD number shape made of 7 bars, as on stadium timing boards.
+- **Muscle activation (switch-on delay)**: real muscles can't go from relaxed to full force instantly; it takes a few hundredths of a second, and longer to relax again. Rupert's muscles now do the same (body v2).
+- **Body version**: which set of body numbers (strength, muscle speed) a run used. v1 = strong and instant (up to EXP-007); v2 = an ordinary young man.
+- **Cadence**: steps per second. Elite sprinters manage about 4.5-5; EXP-007 Rupert did 6+, a sign his body was unrealistic.

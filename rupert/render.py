@@ -42,7 +42,7 @@ def main():
     print(f"Rendering {ckpt.name} -> {out}")
     params = pickle.load(open(ckpt, "rb"))
 
-    env = rupert_env.load(args.task)
+    env = rupert_env.load_for_run(args.run, args.task)
     policy = networks.make_policy_fn(env, args.run)((params[0], params[1]), deterministic=True)
     policy, reset, step = jax.jit(policy), jax.jit(env.reset), jax.jit(env.step)
 
