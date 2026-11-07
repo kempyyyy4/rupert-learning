@@ -61,3 +61,6 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 - **Learning rate**: how big a change the AI makes to its brain after each batch of practice. Too big and it can 'forget' everything in one bad update (what happened in EXP-005); too small and learning is slow.
 - **Training collapse**: when the score suddenly crashes and never comes back, because one bad update broke the brain. Different from reward hacking, where the score goes *up* for the wrong behaviour.
 - **Gradient clipping**: a safety cap on how much one update can change the brain.
+- **HUD / overlay**: graphics laid over the video, like the attempt counter in the corner.
+- **Metaballs**: blobby 3D shapes that melt into each other when close. We use them to make Rupert's smooth skin, clothes and hair.
+- **Costume**: Rupert's outfit for one video. Each video gets its own (`blender/costumes.py`).

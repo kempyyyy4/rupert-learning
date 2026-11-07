@@ -1,18 +1,15 @@
-"""Blender: builds the EP01 scene (stadium + Rupert in a morph suit) around one replay.
+"""Blender: builds the EP01 scene (stadium + Rupert in his costume) around one replay.
 
-Claude runs this; Tom just opens the .blend it saves.
-  blender -b --python blender/build_scene.py -- <replay .npz> <attempt> <out .blend> ["SCREEN TEXT"]
+Claude runs this (usually via rupert/make_clip.py); Tom just opens the .blend it saves.
+  blender -b --python blender/build_scene.py -- <replay .npz> --out <file.blend> [--attempt 0]
+        [--costume ep01_70s] [--screen "TEXT ON BIG SCREEN"]
 
-Rupert (decisions.md): no face, orange bobble beanie, orange shoes, now in a one-piece
-blue morph suit. The suit is ONE smooth skin built around the physics body's limbs
-(blender/rupert_shapes.json) and bent at the joints by a skeleton that copies the replay,
-so limb lengths and joints are exactly the body that learned. Only thickness and the
-head size are exaggerated, for looks.
+Rupert himself is built in rupert_model.py, his outfit for each video in costumes.py.
 
 Coordinates: metres, Z up, track runs along +X from the start line at X = 0,
 Rupert's lane is centred on Y = 0. Cameras sit on the -Y side.
 """
-import json
+import argparse
 import math
 import random
 import sys
@@ -20,20 +17,18 @@ from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Matrix, Quaternion, Vector
-from mathutils.geometry import intersect_point_line
+from mathutils import Matrix
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
+from bl_helpers import box, material, mesh_object, node_material, text  # noqa: E402
 from import_replay import import_replay  # noqa: E402
+from rupert_model import build_rupert  # noqa: E402
 
 random.seed(7)
 
 # ---- look --------------------------------------------------------------------------
 COL = {
-    "suit": (0.02, 0.22, 0.95),       # bright royal blue: pops on the red track
-    "orange": (1.0, 0.32, 0.0),
-    "sole": (0.95, 0.95, 0.95),
     "track": (0.75, 0.13, 0.05),      # traditional red tartan, a bit brighter
     "track2": (0.62, 0.09, 0.03),
     "line": (1.0, 1.0, 1.0),
@@ -55,288 +50,11 @@ TRACK_X = (-40.0, 240.0)
 FINISH_X = 100.0
 CHANNEL = "RUPERT'S AI DIARIES"
 
-# ---- the suit: surface radius (m) of each limb, by physics shape ------------------
-SUIT_RADIUS = {
-    "thigh": 0.072, "shin": 0.052, "upper_arm": 0.045, "lower_arm": 0.037, "hand": 0.05,
-    "lower_waist": 0.09, "butt": 0.095, "torso": 0.07,
-}
-HEAD_R = 0.14           # physics head is 0.098; cartoon head
-METABALL_SCALE = 1 / 0.57   # Blender metaball: surface sits at ~0.57 x element radius
-# each group melts into one smooth piece; groups meet at hip and shoulder like suit seams
-SUIT_GROUPS = {
-    "suitcore": ["torso", "head", "lower_waist", "pelvis"],
-    "suitlegr": ["right_thigh", "right_shin"],
-    "suitlegl": ["left_thigh", "left_shin"],
-    "suitarmr": ["right_upper_arm", "right_lower_arm", "right_hand"],
-    "suitarml": ["left_upper_arm", "left_lower_arm", "left_hand"],
-}
-
-
 def lane_edge(i):
     """Y of the line on the near side of lane i (lane RUPERT_LANE is centred on 0)."""
     return (i - RUPERT_LANE - 0.5) * LANE_W
 
 
-# ---- helpers -----------------------------------------------------------------------
-def material(name, rgb, rough=0.5, emit=0.0, sheen=0.0):
-    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-    m.use_nodes = True
-    bsdf = m.node_tree.nodes.get("Principled BSDF")
-    bsdf.inputs["Base Color"].default_value = (*rgb, 1.0)
-    bsdf.inputs["Roughness"].default_value = rough
-    if sheen:
-        bsdf.inputs["Sheen Weight"].default_value = sheen
-    if emit:
-        bsdf.inputs["Emission Color"].default_value = (*rgb, 1.0)
-        bsdf.inputs["Emission Strength"].default_value = emit
-    return m
-
-
-def node_material(name, build):
-    """Material whose node tree is built by build(nodes, links, bsdf)."""
-    m = bpy.data.materials.new(name)
-    m.use_nodes = True
-    nt = m.node_tree
-    build(nt.nodes, nt.links, nt.nodes.get("Principled BSDF"))
-    return m
-
-
-def mesh_object(name, bm, mat, coll, smooth=True):
-    me = bpy.data.meshes.new(name)
-    bm.to_mesh(me)
-    bm.free()
-    if smooth:
-        for p in me.polygons:
-            p.use_smooth = True
-    if mat:
-        me.materials.append(mat)
-    obj = bpy.data.objects.new(name, me)
-    coll.objects.link(obj)
-    return obj
-
-
-def sphere_bm(radius, top_half_only=False):
-    bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=18, radius=radius)
-    if top_half_only:
-        bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < -1e-4], context="VERTS")
-    return bm
-
-
-def rounded_box_bm(size, bevel, segments=4):
-    bm = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.scale(bm, vec=size, verts=bm.verts)
-    bmesh.ops.bevel(bm, geom=list(bm.edges) + list(bm.verts), offset=bevel, segments=segments,
-                    affect="EDGES", profile=0.5)
-    return bm
-
-
-def box(name, size, loc, mat, coll, bevel=0.0):
-    if bevel:
-        obj = mesh_object(name, rounded_box_bm(size, bevel, 2), mat, coll, smooth=True)
-    else:
-        bm = bmesh.new()
-        bmesh.ops.create_cube(bm, size=1.0)
-        bmesh.ops.scale(bm, vec=size, verts=bm.verts)
-        obj = mesh_object(name, bm, mat, coll, smooth=False)
-    obj.location = loc
-    return obj
-
-
-def text(name, body, loc, rot, size, mat, coll, extrude=0.005):
-    c = bpy.data.curves.new(name, "FONT")
-    c.body, c.size, c.extrude = body, size, extrude
-    c.align_x, c.align_y = "CENTER", "CENTER"
-    try:
-        c.font = bpy.data.fonts.load("C:/Windows/Fonts/arialbd.ttf", check_existing=True)
-    except (RuntimeError, OSError):
-        pass
-    obj = bpy.data.objects.new(name, c)
-    obj.data.materials.append(mat)
-    obj.location, obj.rotation_euler = loc, [math.radians(a) for a in rot]
-    coll.objects.link(obj)
-    return obj
-
-
-def attach(obj, parent, pos=(0, 0, 0), quat=(1, 0, 0, 0)):
-    obj.parent = parent
-    obj.rotation_mode = "QUATERNION"
-    obj.location, obj.rotation_quaternion = pos, quat
-
-
-def rest_matrix(rest, body):
-    r = rest[body]
-    return Matrix.Translation(r["pos"]) @ Quaternion(r["quat"]).to_matrix().to_4x4()
-
-
-def shape_matrix(s):
-    return Matrix.Translation(s["pos"]) @ Quaternion(s["quat"]).to_matrix().to_4x4()
-
-
-# ---- Rupert ------------------------------------------------------------------------
-def suit_pieces(shapes, rest):
-    """Every blob of the suit, in the standing rest pose (world coordinates).
-
-    Returns list of (group, body, kind, world matrix, surface radius, half length).
-    kind 'capsule' runs along the matrix's local Z.
-    """
-    pieces = []
-    for s in shapes:
-        body, name = s["body"], s["name"]
-        if body.endswith("foot") or name == "upper_waist":
-            continue                       # shoes are separate; chest replaces upper_waist
-        group = next(g for g, bodies in SUIT_GROUPS.items() if body in bodies)
-        m = rest_matrix(rest, body) @ shape_matrix(s)
-        if name == "head":
-            pieces.append((group, body, "ball", rest_matrix(rest, body) @ Matrix.Translation((0, 0, 0.02)), HEAD_R, 0))
-            continue
-        key = next((k for k in SUIT_RADIUS if name.endswith(k) or name == k), None)
-        r = SUIT_RADIUS.get(key, s["radius"])
-        pieces.append((group, body, "ball" if s["type"] == "sphere" else "capsule", m, r, s["half_length"]))
-    torso = rest_matrix(rest, "torso")
-    # chest (one smooth barrel instead of the physics model's stacked bars) and neck
-    pieces.append(("suitcore", "torso", "capsule", torso @ Matrix.Translation((0, 0, -0.09)), 0.115, 0.1))
-    head_z = (torso.inverted() @ Vector(rest["head"]["pos"])).z
-    pieces.append(("suitcore", "torso", "capsule", torso @ Matrix.Translation((0, 0, head_z * 0.55)), 0.045, head_z * 0.3))
-    return pieces
-
-
-def build_suit_mesh(pieces, coll):
-    """Metaballs -> one smooth mesh per group (still in the rest pose)."""
-    objs = []
-    to_z = Quaternion((0, 1, 0), -math.pi / 2)        # metaball capsules run along X; ours along Z
-    for group in SUIT_GROUPS:
-        mb = bpy.data.metaballs.new(group)
-        mb.resolution = mb.render_resolution = 0.012
-        mb.threshold = 0.6
-        for g, _, kind, m, r, h in pieces:
-            if g != group:
-                continue
-            e = mb.elements.new(type="CAPSULE" if kind == "capsule" else "BALL")
-            e.co = m.to_translation()
-            e.rotation = m.to_quaternion() @ to_z
-            e.radius = r * METABALL_SCALE
-            e.stiffness = 2.0
-            if kind == "capsule":
-                e.size_x = h
-        obj = bpy.data.objects.new(group, mb)
-        coll.objects.link(obj)
-        dg = bpy.context.evaluated_depsgraph_get()
-        me = bpy.data.meshes.new_from_object(obj.evaluated_get(dg))
-        coll.objects.unlink(obj)
-        bpy.data.objects.remove(obj)
-        mesh_obj = bpy.data.objects.new(f"rupert_{group}", me)
-        coll.objects.link(mesh_obj)
-        for p in me.polygons:
-            p.use_smooth = True
-        objs.append(mesh_obj)
-    return objs
-
-
-def body_segments(pieces):
-    """Each body's 'bone line' (start, end) segments in the rest pose, for skin weights."""
-    segs = {}
-    for _, body, kind, m, r, h in pieces:
-        a = m @ Vector((0, 0, -h)) if kind == "capsule" else m.to_translation()
-        b = m @ Vector((0, 0, h)) if kind == "capsule" else m.to_translation()
-        segs.setdefault(body, []).append((a, b))
-    return segs
-
-
-def _dist(p, a, b):
-    if (b - a).length < 1e-6:
-        return (p - a).length
-    _, t = intersect_point_line(p, a, b)
-    t = min(max(t, 0.0), 1.0)
-    return (p - (a + (b - a) * t)).length
-
-
-def skin_weights(obj, group, segs):
-    """Each skin point follows the body part it's closest to, blended over ~2 cm at joints."""
-    bodies = SUIT_GROUPS[group]
-    vgs = {b: obj.vertex_groups.new(name=b) for b in bodies}
-    for v in obj.data.vertices:
-        d = {b: min(_dist(v.co, a, c) for a, c in segs[b]) for b in bodies if b in segs}
-        dmin = min(d.values())
-        w = {b: math.exp(-(x - dmin) / 0.012) for b, x in d.items()}
-        total = sum(w.values())
-        for b, x in w.items():
-            if x / total > 0.02:
-                vgs[b].add([v.index], x / total, "REPLACE")
-
-
-def build_skeleton(empties, rest, coll):
-    """One bone per body part, each glued to that part's replay empty."""
-    arm_data = bpy.data.armatures.new("rupert_skeleton")
-    arm = bpy.data.objects.new("rupert_skeleton", arm_data)
-    coll.objects.link(arm)
-    bpy.context.view_layer.objects.active = arm
-    bpy.ops.object.mode_set(mode="EDIT")
-    for body, r in rest.items():
-        if body not in empties:
-            continue
-        b = arm_data.edit_bones.new(body)
-        b.head = Vector(r["pos"])
-        b.tail = b.head + Vector((0, 0, 0.08))
-    bpy.ops.object.mode_set(mode="OBJECT")
-    for body in rest:
-        if body not in empties:
-            continue
-        c = arm.pose.bones[body].constraints.new("CHILD_OF")
-        c.target = empties[body]
-        c.inverse_matrix = rest_matrix(rest, body).inverted()
-    arm.hide_render = True
-    return arm
-
-
-def build_shoe(name, foot_shapes, parent, coll, upper_m, sole_m):
-    ys = [s["pos"][1] for s in foot_shapes]
-    cy = sum(ys) / len(ys)
-    cx = foot_shapes[0]["pos"][0]
-    r = foot_shapes[0]["radius"]
-    length = 2 * (foot_shapes[0]["half_length"] + r) + 0.03
-    sole = mesh_object(f"{name}_sole", rounded_box_bm((length, 0.115, 0.03), 0.012), sole_m, coll)
-    attach(sole, parent, (cx + 0.005, cy, -r + 0.012))
-    upper = mesh_object(f"{name}_upper", rounded_box_bm((length - 0.02, 0.1, 0.085), 0.035, 5), upper_m, coll)
-    attach(upper, parent, (cx, cy, -r + 0.06))
-
-
-def build_rupert(empties, coll):
-    data = json.loads((HERE / "rupert_shapes.json").read_text())
-    shapes, rest = data["shapes"], data["rest"]
-    suit_m = material("rupert_suit", COL["suit"], rough=0.42, sheen=0.3)
-    orange = material("rupert_orange", COL["orange"], rough=0.7, sheen=0.5)
-    sole_m = material("rupert_sole", COL["sole"], rough=0.5)
-
-    pieces = suit_pieces(shapes, rest)
-    segs = body_segments(pieces)
-    arm = build_skeleton(empties, rest, coll)
-    for obj in build_suit_mesh(pieces, coll):
-        group = obj.name.replace("rupert_", "")
-        obj.data.materials.append(suit_m)
-        skin_weights(obj, group, segs)
-        mod = obj.modifiers.new("skeleton", "ARMATURE")
-        mod.object = arm
-
-    # beanie on the head (dome + turned-up cuff + bobble)
-    hz = 0.02
-    dome = mesh_object("rupert_beanie", sphere_bm(HEAD_R * 1.07, top_half_only=True), orange, coll)
-    attach(dome, empties["head"], (0, 0, hz + 0.1 * HEAD_R))
-    bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=False, segments=40, radius1=HEAD_R * 1.1, radius2=HEAD_R * 1.12, depth=HEAD_R * 0.38)
-    cuff = mesh_object("rupert_beanie_cuff", bm, orange, coll)
-    cuff.modifiers.new("thick", "SOLIDIFY").thickness = 0.012
-    attach(cuff, empties["head"], (0, 0, hz + 0.22 * HEAD_R))
-    bob = mesh_object("rupert_bobble", sphere_bm(HEAD_R * 0.33), orange, coll)
-    attach(bob, empties["head"], (0, 0, hz + 1.25 * HEAD_R))
-
-    for side in ("right", "left"):
-        foot = [s for s in shapes if s["body"] == f"{side}_foot"]
-        build_shoe(f"rupert_shoe_{side}", foot, empties[f"{side}_foot"], coll, orange, sole_m)
-    for e in empties.values():
-        e.hide_render = True
-        e.hide_viewport = True
 
 
 # ---- stadium -----------------------------------------------------------------------
@@ -565,16 +283,21 @@ def render_settings():
 
 
 def main():
-    extra = sys.argv[sys.argv.index("--") + 1:]
-    replay, attempt, out = extra[0], int(extra[1]), extra[2]
-    screen_text = extra[3] if len(extra) > 3 else "TRAINING"
+    ap = argparse.ArgumentParser(prog="build_scene.py")
+    ap.add_argument("replay")
+    ap.add_argument("--attempt", type=int, default=0)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--screen", default="TRAINING", help="text on the stadium's big screen")
+    ap.add_argument("--costume", default="ep01_70s")
+    args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:])
+    replay, attempt, out, screen_text = args.replay, args.attempt, args.out, args.screen
     bpy.ops.wm.read_factory_settings(use_empty=True)
     empties = import_replay(replay, attempt)
     rupert = bpy.data.collections.new("rupert")
     stadium = bpy.data.collections.new("stadium")
     bpy.context.scene.collection.children.link(rupert)
     bpy.context.scene.collection.children.link(stadium)
-    build_rupert(empties, rupert)
+    build_rupert(empties, rupert, args.costume)
     build_stadium(stadium, screen_text)
     build_world_and_light()
     build_cameras(empties)
