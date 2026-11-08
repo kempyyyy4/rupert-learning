@@ -21,6 +21,7 @@ Rupert goes from collapsing to running, ending on his first 100m time trial. The
 6. Tom watches and decides whether it's a video
 
 ## Experiments
+- EXP-009: **arms finally swing** (first real arm swing), but cheat #8 is a **skipping gallop**: the same leg always leads, exploiting a loophole in the even-steps rule. Best 100 m 15.4 s; training less steady. Clip: step_0000698941440.
 - EXP-008: body v2 (ordinary young man) worked: **100 m in 13.5 s**, ~5 steps/s, steady training. New cheat: **lopsided gallop with a frozen 'superhero' arm**, faking the arm-swing reward. Clip: step_0000757923840.
 - EXP-007: knee fix worked (upright the whole time), but a new cheat appeared: the **T-rex scuttle** (arms locked to his chest, feet scurrying under his hips). **100 m in 10.0 s**, too fast for a beginner, so the body is probably too strong. Clip: step_0000875888640.
 - EXP-001: local smoke test, pipeline works (CPU, 17 min)
@@ -44,7 +45,8 @@ In narration, each fix is "giving Rupert a reward" (or a rule) for doing somethi
 | 5 | **Runs on his knees** | EXP-006 `rupert_20261107_1159/step_0000728432640.mp4` | **Knees on the ground = a fall**; knee reward only in a real stride |
 | 6 | **T-rex scuttle**: arms clamped to his chest, feet scurrying under his hips at Bolt speed (100 m in 10.0 s) | EXP-007 `rupert_20261107_1323/step_0000875888640.mp4` | Rewarded for **swinging his arms**; given an **ordinary young man's body** (lab-tested strength, muscles that take time to switch on) |
 | 7 | **Lopsided gallop with a frozen 'superhero' arm**: same leg always leads, arms held in a fixed 'opposite' pose to fake the arm swing. (Now at a realistic 13.5 s per 100 m.) | EXP-008 `rupert_20261107_2130/step_0000757923840.mp4` | Arm reward only for arms that actually **swing**; full stride points only for **even steps** |
-| 8 | ? | EXP-009 | |
+| 8 | **Skipping gallop**: arms finally swing, but the same leg always leads and the other hops in behind it (a loophole in the even-steps rule). 15.4 s per 100 m. | EXP-009 `rupert_20261108_0008/step_0000698941440.mp4` | TBC: show him real runners |
+| 9 | ? | | |
 
 Honesty notes for the script:
 - Each fix started a **fresh training run**: his brain was wiped and he learned again from zero under the new rules. Say it ("we wiped his memory and gave him new rules"), don't imply one continuous Rupert.
