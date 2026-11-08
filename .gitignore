@@ -12,3 +12,8 @@ checkpoints/
 renders/
 *.mp4
 *.npz
+
+# Real-runner recordings: keep the raw CMU files local (their licence forbids reselling the data);
+# the fitted reference the cloud needs is committed.
+mocap/cmu/
+!mocap/run_reference.npz

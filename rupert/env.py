@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import jax
+import numpy as np
 import jax.numpy as jp
 import mujoco
 from ml_collections import config_dict
@@ -47,6 +48,7 @@ from mujoco import mjx
 from mujoco_playground._src import mjx_env
 from mujoco_playground._src.dm_control_suite import common
 
+from rupert import amp as rupert_amp
 from rupert import body as rupert_body
 
 XML_PATH = Path(__file__).parent / "assets" / "rupert.xml"
@@ -70,6 +72,23 @@ REWARD_WEIGHTS = dict(
     knees=0.3,
     arm_swing=0.5,
 )
+# Scoring v8 (style judge, EXP-010+): only the basic rules. All the special fixes for his cheats
+# (posture, strides, knees, arm swing, hand reach) are switched off: the style judge, which has
+# watched real runners, scores how human he looks instead (rupert/amp.py, added in amp_ppo.py).
+REWARD_WEIGHTS_JUDGE = dict(
+    forward_speed=0.25,
+    alive=0.2,
+    upright=0.0,
+    heading=0.1,
+    stride=0.0,
+    energy=-0.004,
+    jerk=-0.1,
+    lane=-0.3,
+    arms=0.0,
+    knees=0.0,
+    arm_swing=0.0,
+)
+
 # EXP-005 ran with near-straight legs (left knee bent only 12 deg, both pushed past straight).
 # Real runners fold the swinging knee to ~90 deg or more.
 KNEE_SWING_TARGET_RAD = 1.6   # ~90 deg: full credit for this much bend while the foot is in the air
@@ -85,6 +104,10 @@ LEAD_MARGIN_M = 0.10     # a step only counts if the landing foot lands this far
 # OpenSim's first-order activation model. Body v1 had instant muscles.
 MUSCLE_ON_S = 0.010
 MUSCLE_OFF_S = 0.040
+
+# Body v3 hip sideways range (deg): negative = outwards (abduction 33), positive = inwards (adduction 14).
+# Passive normative values 33.0 +- 4.8 / 13.8 +- 6.3 (AAOS-based table, Sports Health 2020, PMC8167346).
+HIP_X_RANGE_DEG = (-33.0, 14.0)
 
 # rad/s at which a joint's torque drops to zero (concentric). TO VERIFY against sources.
 MAX_JOINT_SPEED = {"hip_y": 25.0, "knee": 35.0, "ankle_y": 35.0, "default": 20.0}
@@ -104,7 +127,10 @@ def default_config() -> config_dict.ConfigDict:
         naconmax=200_000,
         njmax=250,
         init_noise=0.05,
-        body_version=2,   # 1 = EXP-001..007 (strong, instant muscles); 2 = ordinary young man
+        style_judge=True,     # scoring v8: basic rules + style judge (False = scoring v7 rules)
+        ref_start_prob=0.0,   # chance an attempt starts mid-stride in a real runner's pose (training only)
+        body_version=3,   # 1 = EXP-001..007 (strong, instant muscles); 2 = ordinary young man (EXP-008/009);
+                          # 3 = v2 + human hip side-to-side range (needed to copy real runners)
     )
 
 
@@ -144,6 +170,9 @@ class RupertRun(mjx_env.MjxEnv):
         self._version = int(self._config.body_version)
         peaks = [rupert_body.peak_torques(_joint_key(m.joint(j).name), self._version) for j in joint_ids]
         m.actuator_gear[:, 0] = [max(p) for p in peaks]   # v1 runs get their old strengths back
+        if self._version >= 3:   # hip sideways: out 33 deg, in 14 deg (AAOS-based norms; stock was 25 / 5)
+            for side in ("right", "left"):
+                m.jnt_range[m.joint(f"{side}_hip_x").id] = np.radians(HIP_X_RANGE_DEG)
         self._mjx_model = mjx.put_model(m, impl=self._config.impl)
         self._gear = jp.array(m.actuator_gear[:, 0])
         self._pos_scale = jp.array([p[0] / max(p) for p in peaks])   # weaker direction scaled down
@@ -158,6 +187,26 @@ class RupertRun(mjx_env.MjxEnv):
         self._qpos0 = jp.array(m.qpos0)
         self._knee_qpos = jp.array([m.jnt_qposadr[m.joint(j).id] for j in KNEE_ORDER])
         self._shin_ids = jp.array([m.body("right_shin").id, m.body("left_shin").id])   # body origin = knee joint
+        self._judge_on = bool(self._config.style_judge)
+        self._weights = REWARD_WEIGHTS_JUDGE if self._judge_on else REWARD_WEIGHTS
+        self._amp_ids = rupert_amp.Ids(m)
+        self._ref_prob = float(self._config.ref_start_prob)
+        if self._ref_prob > 0:
+            self._ref_qpos, self._ref_qvel = self._reference_starts(m)
+
+    def _reference_starts(self, m):
+        """Poses and speeds from the real-runner clips, for starting some attempts mid-stride."""
+        z = np.load(rupert_amp.REFERENCE)
+        q, starts, fps = z["qpos"].astype(np.float64), z["starts"], float(z["fps"])
+        qs, vs = [], []
+        for a, b in zip(starts[:-1], starts[1:]):
+            for i in range(a, b - 1):
+                v = np.zeros(m.nv)
+                mujoco.mj_differentiatePos(m, v, 1.0 / fps, q[i], q[i + 1])
+                start = q[i].copy()
+                start[0] = 0.0   # on the start line
+                qs.append(start); vs.append(v)
+        return jp.array(np.array(qs)), jp.array(np.array(vs))
 
     # ------------------------------------------------------------------ reset
     def reset(self, rng: jax.Array) -> mjx_env.State:
@@ -165,6 +214,12 @@ class RupertRun(mjx_env.MjxEnv):
         n = self._config.init_noise
         qpos = self._qpos0.at[7:].add(jax.random.uniform(k1, (self.mj_model.nq - 7,), minval=-n, maxval=n))
         qvel = jax.random.uniform(k2, (self.mj_model.nv,), minval=-n, maxval=n)
+        if self._ref_prob > 0:
+            rng, k3, k4 = jax.random.split(rng, 3)
+            i = jax.random.randint(k3, (), 0, self._ref_qpos.shape[0])
+            use_ref = jax.random.uniform(k4) < self._ref_prob
+            qpos = jp.where(use_ref, self._ref_qpos[i], qpos)
+            qvel = jp.where(use_ref, self._ref_qvel[i], qvel)
         data = mjx_env.make_data(
             self.mj_model, qpos=qpos, qvel=qvel, impl=self.mjx_model.impl.value,
             naconmax=self._config.naconmax, njmax=self._config.njmax,
@@ -180,8 +235,10 @@ class RupertRun(mjx_env.MjxEnv):
             "limb_fwd": self._limb_fwd(data),
             "last_step": jp.array(-1.0),   # unknown until the first proper step
         }
+        s0 = self._amp_state(data)
+        info["amp_obs"] = jp.concatenate([s0, s0])
         metrics = {k: jp.zeros(()) for k in (
-            *(f"reward/{w}" for w in REWARD_WEIGHTS),
+            *(f"reward/{w}" for w in REWARD_WEIGHTS), "reward/task",
             "distance_m", "time_upright_s")}
         obs = self._get_obs(data, info)
         return mjx_env.State(data, obs, jp.zeros(()), jp.zeros(()), metrics, info)
@@ -201,7 +258,32 @@ class RupertRun(mjx_env.MjxEnv):
         rate = jp.where(jp.abs(action) > jp.abs(act), self._on_rate, self._off_rate)
         return act + (action - act) * rate
 
+    def _amp_state(self, data):
+        return rupert_amp.amp_state(data.qpos, data.xpos, data.xmat, self._amp_ids)
+
+    def _fresh_info(self, state):
+        """The trainer's auto-restart only resets the body, not our bookkeeping. On the first step
+        of a new attempt (sim clock at 0), clear what carried over from the last attempt."""
+        fresh = state.data.time < 1e-9
+        info = dict(state.info)
+        foot_x = state.data.geom_xpos[self._foot_geom_ids[:, 0], 0]
+        clean = {
+            "last_action": jp.zeros(self.action_size),
+            "activation": jp.zeros(self.action_size),
+            "air_time": jp.zeros(2),
+            "last_foot": jp.array(-1.0),
+            "liftoff_x": foot_x,
+            "limb_fwd": self._limb_fwd(state.data),
+            "last_step": jp.array(-1.0),
+        }
+        for k, v in clean.items():
+            info[k] = jp.where(fresh, v, info[k])
+        return state.replace(info=info)
+
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
+        state = self._fresh_info(state)
+        amp_before = self._amp_state(state.data)   # from the body itself, so restarts can't mix attempts
+
         def substep(carry, _):
             data, act = carry
             act = self._activate(act, action)
@@ -212,6 +294,7 @@ class RupertRun(mjx_env.MjxEnv):
         data, act = jax.lax.scan(substep, (state.data, state.info["activation"]), (), self.n_substeps)[0]
         info = dict(state.info)
         info["activation"] = act
+        info["amp_obs"] = jp.concatenate([amp_before, self._amp_state(data)])
         reward, parts, info = self._get_reward(data, action, info)
 
         low = jp.concatenate([data.xpos[self._shin_ids, 2], data.xpos[self._hand_ids, 2]])
@@ -238,7 +321,7 @@ class RupertRun(mjx_env.MjxEnv):
         parts = {}
         lo, hi = TALL_HEAD_HEIGHT_M
         tall = jp.clip((self._head_height(data) - lo) / (hi - lo), 0.0, 1.0)
-        posture = 0.3 + 0.7 * tall
+        posture = 0.3 + 0.7 * tall if not self._judge_on else 1.0   # judge mode: no 'run tall' rule
         parts["forward_speed"] = jp.clip(vel[0], -2.0, SPEED_CAP_MS) * posture
         parts["alive"] = jp.array(1.0)
         parts["upright"] = 0.5 * (torso[2, 2] + data.xmat[self._pelvis_id][2, 2])
@@ -284,7 +367,8 @@ class RupertRun(mjx_env.MjxEnv):
         swing = (~contact) & contact[::-1]          # this foot in the air WHILE the other one is planted
         parts["knees"] = jp.sum(jp.where(swing, bend, 0.0)) - 3.0 * jp.sum(jp.clip(knee, 0.0, None))
 
-        reward = sum(REWARD_WEIGHTS[k] * v for k, v in parts.items())
+        reward = sum(self._weights[k] * v for k, v in parts.items())
+        parts["task"] = reward   # logged; the style judge's points are added by the trainer
         return reward, parts, info
 
     # ------------------------------------------------------------ observations

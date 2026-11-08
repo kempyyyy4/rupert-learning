@@ -2,6 +2,17 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-08
+- **Style judge (AMP) for EP01's ending** (Tom chose B2 over 'copy one runner': better story). Rupert found cheat #8 (skipping gallop, EXP-009), so as agreed we stop adding rules and show him real runners.
+  - A second small AI (the judge) learns to tell real runners from Rupert. Rupert earns style points when it can't tell. Method: Adversarial Motion Priors, Peng et al. 2021.
+  - **Data:** 26 running/jogging clips (2.6–4.5 m/s) of 3 people from the CMU Motion Capture Database. The licence allows use in commercial products but not reselling the data. Credit CMU in the description (wording in `mocap/README.md`). Raw files stay out of git.
+  - **Fitted onto Rupert** by matching each body segment's direction (his proportions differ; position matching left errors of 10–19 cm). The result is within about 4–7° per segment.
+  - **Scoring v8:** all the special cheat fixes (run tall, strides, knees, arm swing, hand reach) are switched off. Only the basics remain (move forward, stay up, face the track, stay in lane, don't waste energy), plus style points (weight 1.5).
+  - The judge sees body shape and limb movement but **not** forward speed, so it judges form, not pace.
+  - **30% of practice attempts start mid-stride** in a real runner's pose ('reference state initialisation', standard for this method). Test runs and the 100 m trials always start standing. Say so honestly in the video.
+- **Body v3:** hip sideways range widened to human norms (out 33°, in 14°; was 25° / 5°). Source in `docs/body-sources.md`.
+- **Fixed: bookkeeping carried over between attempts.** The trainer's auto-restart only resets the body, so muscle state, foot timers etc. leaked from a fallen attempt into the next. They're now cleared on the first step of each attempt.
+
 ## 2026-11-07
 - **Scoring v7 after EXP-008 (lopsided gallop, frozen arm)** (Tom chose another reward fix over the style judge, as the last reward-only attempt). (1) Arm swing now uses hand and foot *speeds*, not positions, so a frozen pose scores 0. (2) Stride credit is scaled by how even the last two steps are (shorter ÷ longer), and a step only counts if the landing foot lands at least 0.1 m in front of the other foot. Checked by replaying old brains: EXP-008's limp scores 0.47 evenness, EXP-007 0.85, EXP-005 0.92. Arm swing is ~0 for all of them, since none actually swung. If EXP-009 finds cheat #8, the style judge (AMP) becomes the EP01 ending.
 - **Body v2: Rupert gets an ordinary young man's body** (Tom agreed). EXP-007 ran 100 m in 10.0 s at 6+ steps a second, near Bolt, because body v1 was a 'strong trained adult' with instant muscles. A beginner reaching world-record pace would kill the EP02 'chase Bolt' gap and wouldn't be honest. Hip, knee and ankle strengths now come from a lab study of non-athletic men under 30 (Harbo et al. 2012), with different strength each way (e.g. knee straighten 265 / bend 122 N·m, toes down 147 / up 44). Muscles now take 10 ms to switch on and 40 ms to switch off (Zajac/Winters). Muscle speed limits and side/twist strengths are unchanged (still TO VERIFY). Old runs replay with body v1 automatically (`env.load_for_run`). Sources are in `docs/body-sources.md`.

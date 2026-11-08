@@ -46,9 +46,12 @@ In narration, each fix is "giving Rupert a reward" (or a rule) for doing somethi
 | 6 | **T-rex scuttle**: arms clamped to his chest, feet scurrying under his hips at Bolt speed (100 m in 10.0 s) | EXP-007 `rupert_20261107_1323/step_0000875888640.mp4` | Rewarded for **swinging his arms**; given an **ordinary young man's body** (lab-tested strength, muscles that take time to switch on) |
 | 7 | **Lopsided gallop with a frozen 'superhero' arm**: same leg always leads, arms held in a fixed 'opposite' pose to fake the arm swing. (Now at a realistic 13.5 s per 100 m.) | EXP-008 `rupert_20261107_2130/step_0000757923840.mp4` | Arm reward only for arms that actually **swing**; full stride points only for **even steps** |
 | 8 | **Skipping gallop**: arms finally swing, but the same leg always leads and the other hops in behind it (a loophole in the even-steps rule). 15.4 s per 100 m. | EXP-009 `rupert_20261108_0008/step_0000698941440.mp4` | TBC: show him real runners |
-| 9 | ? | | |
+| 9 | ? (the ending) | EXP-010: **style judge**, which has watched 26 real runners | All the special rules switched off; a second AI judges whether he looks human |
+
+**The ending (Tom, 2026-11-08): show him real runners.** After eight cheats we stop writing rules. A second AI, the style judge, studies recordings of real people running and tries to tell them apart from Rupert. Rupert gets points for fooling it. Footage: `mocap/run_reference.mp4` shows the real runs on Rupert's body ("this is what we showed him").
 
 Honesty notes for the script:
+- From EXP-010 on: 30% of practice attempts start mid-stride in a real runner's pose. Test runs and the 100 m trials always start from standing. The judge never sees his speed, only his form.
 - Each fix started a **fresh training run**: his brain was wiped and he learned again from zero under the new rules. Say it ("we wiped his memory and gave him new rules"), don't imply one continuous Rupert.
 - Fixes 1, 2, 4 and 5 included **penalties and rules**, not only rewards. "Rewards and rules" or "rewards and punishments" keeps it true.
 - The attempt counter in each run counts that run's attempts. For the whole-story total, add the runs together and call it "total attempts".

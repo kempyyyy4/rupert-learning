@@ -69,6 +69,14 @@ Searched 2026-11-06: Schache et al. (2011) *Effect of running speed on lower lim
 | Everything else | 20 rad/s | TO VERIFY |
 Model: straight-line force–velocity (simpler than the real Hill curve). The real curve is steeper, so ours is slightly generous at mid speeds.
 
+## Joint range (body v3, from 2026-11-08)
+| Joint | Value | Status |
+|---|---|---|
+| Hip sideways: outwards / inwards | 33° / 14° (stock model: 25° / 5°) | CONFIRMED: passive normative values 33.0 ± 4.8 / 13.8 ± 6.3, AAOS-based table in Sports Health (2020), [PMC8167346 table 1](https://pmc.ncbi.nlm.nih.gov/articles/PMC8167346/table/table1-1941738120953418) |
+| Hip backwards (extension) | 20° (unchanged) | Within norms: same table gives 17.0 ± 3.9 |
+| Everything else | stock MuJoCo humanoid | TO VERIFY |
+Why it changed: fitting real runners onto Rupert, his hip hit the 5° inwards limit 30–50% of the time (runners put their feet under their middle).
+
 ## Known simplifications (be honest about these on camera)
 - Muscles are motors at each joint, not individual muscles. No fatigue.
 - Hip, knee and ankle (forward/back) have a different strength each way (body v2). The other joints are still the same both ways.

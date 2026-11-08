@@ -8,6 +8,11 @@ Training happens in two phases so we capture the funny early stages:
   phase 2 "main":   the rest, with about --main-checkpoints checkpoints spread evenly
 Phase 2 continues from phase 1's brain (only the optimiser's short-term memory restarts).
 
+Style judge (default, scoring v8): a second network that has watched real runners scores how human
+Rupert looks (rupert/amp.py, trainer rupert/amp_ppo.py). --no-judge trains with the v7 rules instead.
+With the judge, --ref-start of attempts start mid-stride in a real runner's pose (test runs and
+the 100 m time trials always start standing).
+
 Outputs in --out:
   config.json            every setting used, plus the real step totals Brax will run
   progress.json          one line per check-in: step, time, score, distance, time upright...
@@ -27,6 +32,8 @@ from brax.training.agents.ppo import train as ppo
 from ml_collections import config_dict
 from mujoco_playground import wrapper
 
+from rupert import amp as rupert_amp
+from rupert import amp_ppo
 from rupert import env as rupert_env
 from rupert import networks
 
@@ -72,6 +79,8 @@ def main():
     ap.add_argument("--main-checkpoints", type=int, default=100)
     ap.add_argument("--smoke", action="store_true", help="tiny test run, only proves the code works")
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--no-judge", action="store_true", help="old scoring v7, no style judge")
+    ap.add_argument("--ref-start", type=float, default=0.3, help="share of practice attempts starting mid-stride")
     args = ap.parse_args()
 
     out = Path(args.out)
@@ -93,14 +102,26 @@ def main():
     print(f"Task {args.task}: {total:,} training steps in total, {cfg.num_envs} Ruperts at once")
     for name, p in phases:
         print(f"  phase {name}: {p['real_steps']:,} steps, checkpoint every {p['steps_per_checkin']:,}")
+    use_judge = args.task == "Rupert100m" and not args.no_judge
+    env_overrides = {"episode_length": cfg.episode_length, "style_judge": use_judge} if args.task == "Rupert100m" else None
+    train_overrides = dict(env_overrides or {}, ref_start_prob=args.ref_start) if use_judge else env_overrides
+    judge = None
+    if use_judge:
+        judge = rupert_amp.Judge(rupert_env.load(args.task, env_overrides).mj_model)
+        print(f"Style judge: {judge.ref.shape[0]:,} real-runner moments to learn from")
+    env_cfg = None
+    if args.task == "Rupert100m":
+        env_cfg = rupert_env.default_config().to_dict()
+        env_cfg.update(train_overrides)
     (out / "config.json").write_text(json.dumps({
         "task": args.task, "seed": args.seed, "requested_steps": args.steps, "real_total_steps": total,
         "phases": dict(phases), "ppo": cfg.to_dict(), "network": networks.DEFAULT_SIZES,
-        "env": rupert_env.default_config().to_dict() if args.task == "Rupert100m" else None,
-        "reward_weights": rupert_env.REWARD_WEIGHTS if args.task == "Rupert100m" else None,
+        "env": env_cfg,
+        "reward_weights": (rupert_env.REWARD_WEIGHTS_JUDGE if use_judge else rupert_env.REWARD_WEIGHTS)
+        if args.task == "Rupert100m" else None,
+        "judge": {k: getattr(judge, k) for k in ("style_weight", "task_weight", "learning_rate", "grad_penalty",
+                                                 "batch", "updates_per_step")} if judge else None,
     }, indent=1, default=str))
-
-    env_overrides = {"episode_length": cfg.episode_length} if args.task == "Rupert100m" else None
     log, start, offset, restore = [], time.time(), 0, None
     final_params = {}
 
@@ -113,7 +134,12 @@ def main():
             if f"eval/episode_{k}" in metrics:
                 row[k] = round(float(metrics[f"eval/episode_{k}"]), 2)
         log.append(row)
+        for k in ("real", "rupert", "style_reward"):
+            if f"training/judge/{k}" in metrics:
+                row[f"judge_{k}"] = round(float(metrics[f"training/judge/{k}"]), 3)
         extra = "".join(f"  {k} {row[k]:7.2f}" for k in ("distance_m", "time_upright_s") if k in row)
+        if "judge_style_reward" in row:
+            extra += f"  style {row['judge_style_reward']:.2f} (judge: real {row['judge_real']:+.2f}, Rupert {row['judge_rupert']:+.2f})"
         print(f"  step {row['step']:>13,}  score {row['score']:9.2f}{extra}  ({row['seconds']}s)", flush=True)
         (out / "progress.json").write_text(json.dumps(log, indent=1))
 
@@ -125,12 +151,14 @@ def main():
         with open(out / "checkpoints" / f"step_{int(step) + offset:013d}.pkl", "wb") as f:
             pickle.dump(brain, f)
 
+    judge_params = None
     for name, p in phases:
         train_cfg = dict(cfg)
         train_cfg.pop("network_factory", None)
         train_cfg.update(num_timesteps=p["num_timesteps"], num_evals=p["num_evals"])
-        ppo.train(
-            environment=rupert_env.load(args.task, env_overrides),
+        trainer, extra = (amp_ppo.train, {"judge": judge, "restore_judge": judge_params}) if judge else (ppo.train, {})
+        _, _, end_metrics = trainer(
+            environment=rupert_env.load(args.task, train_overrides),
             eval_env=rupert_env.load(args.task, env_overrides),
             wrap_env_fn=wrapper.wrap_for_brax_training,
             network_factory=networks.factory(),
@@ -138,10 +166,15 @@ def main():
             policy_params_fn=functools.partial(save_checkpoint, phase=name),
             restore_params=restore,
             seed=args.seed,
+            **extra,
             **train_cfg,
         )
         restore = final_params["p"]
         offset += p["real_steps"]
+        if judge:
+            judge_params = end_metrics["judge_params"]
+            with open(out / "checkpoints" / "judge.pkl", "wb") as f:
+                pickle.dump(jax.device_get(judge_params), f)   # the judge's brain, for continuing or inspecting
 
     with open(out / "checkpoints" / "final_full.pkl", "wb") as f:
         pickle.dump(final_params["p"], f)   # includes the value net, so training can be resumed
