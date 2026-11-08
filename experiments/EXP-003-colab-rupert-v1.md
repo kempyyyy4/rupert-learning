@@ -20,7 +20,7 @@
 ## Result
 - Did it learn? **Yes.** Collapse → lunging falls (~18M) → stooped shuffle (~30M) → finishes 100 m every attempt from ~77M.
 - Best 100 m: **19.2 s** at 112M steps; top speed 5.6 m/s. Still improving when it stopped.
-- What it looks like: **not human running.** Hunched forward (head 1.52 m vs 1.75 standing), knees bent, arms hanging, 6.7 tiny steps a second (~0.8 m each). A fast stooped shuffle.
+- What it looks like: **not human running.** Bent over BACKWARDS (head 1.52 m vs 1.75 standing, and 0.38 m behind the hips; first written up as "hunched forward", corrected 2026-11-08 from the replay), knees bent, arms hanging, 6.7 tiny steps a second (~0.8 m each). A fast leaning-back shuffle.
 - Best moments: step 0 (collapse), ~18M (lunge and fall), ~30M (first shuffle beyond 10 m), ~77M (first 100 m finish).
 - Colab filming crashed on the long final clip (likely memory). Fixed by a lighter renderer.
 
