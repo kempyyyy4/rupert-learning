@@ -218,13 +218,21 @@ def build_world_and_light():
     scene.collection.objects.link(obj)
 
 
-def build_face_camera(empties, frames):
-    """Intro close-up: slow push-in on Rupert's face while he stands on the start line (frames 1..frames)."""
+FACE_SHOTS = {   # (camera offset from his head at the start, at the end, aim point below the head)
+    "close": ((2.6, -1.5, 0.05), (1.4, -0.8, 0.02), 0.0),     # head and shoulders -> face
+    "waist": ((5.2, -1.3, -0.3), (4.3, -1.05, -0.25), 0.28),  # waist up, nearly face-on, room for a raised hand
+    "desk": ((5.6, -3.1, -0.15), (5.1, -2.8, -0.17), 0.36),       # the judge at his desk, room for the card
+}
+
+
+def build_face_camera(empties, frames, shot="close"):
+    """Intro shots: slow push-in on Rupert while he stands on the start line (frames 1..frames)."""
+    start, end, aim = FACE_SHOTS[shot]
     scene = bpy.context.scene
     scene.frame_set(1)
     h = empties["head"].matrix_world.translation.copy()
     look = bpy.data.objects.new("cam_face_target", None)
-    look.location = (h.x, h.y, h.z + 0.02)
+    look.location = (h.x, h.y, h.z + 0.02 - aim)
     scene.collection.objects.link(look)
     cam = bpy.data.cameras.new("cam_face")
     cam.lens = 85
@@ -233,7 +241,7 @@ def build_face_camera(empties, frames):
     scene.collection.objects.link(obj)
     t = obj.constraints.new("TRACK_TO")
     t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
-    for frame, (dx, dy, dz) in ((1, (2.6, -1.5, 0.05)), (frames, (1.4, -0.8, 0.02))):
+    for frame, (dx, dy, dz) in ((1, start), (frames, end)):
         obj.location = (h.x + dx, h.y + dy, h.z + dz)
         obj.keyframe_insert("location", frame=frame)
 
@@ -264,6 +272,7 @@ def build_cameras(empties):
 
     main = camera("cam_three_quarter", (4.0, -6.5, 1.7), 50)
     camera("cam_side", (0.0, -7.5, 1.2), 50)
+    camera("cam_front_low", (6.5, -2.6, 0.45), 45)   # low, in front: he stumbles towards the lens
     # wide, fixed shot of the start area and the attempts board (for sped-up training montages)
     wide = bpy.data.objects.new("cam_wide_start", bpy.data.cameras.new("cam_wide_start"))
     wide.data.lens = 30
@@ -275,6 +284,21 @@ def build_cameras(empties):
     t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
     scene.collection.objects.link(wide)
     scene.camera = main
+
+
+def build_swarm_camera():
+    """High, wide, fixed view over the start area: every practising Rupert in shot."""
+    scene = bpy.context.scene
+    cam = bpy.data.cameras.new("cam_swarm")
+    cam.lens = 28
+    obj = bpy.data.objects.new("cam_swarm", cam)
+    obj.location = (7.0, -9.5, 4.2)
+    look = bpy.data.objects.new("cam_swarm_target", None)
+    look.location = (-4.5, 1.6, 0.4)
+    for o in (obj, look):
+        scene.collection.objects.link(o)
+    t = obj.constraints.new("TRACK_TO")
+    t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
 
 
 def render_settings():
@@ -308,7 +332,13 @@ def main():
     ap.add_argument("--costume", default="ep01_70s")
     ap.add_argument("--attempts", type=int, default=0, help="number on the stadium attempts board")
     ap.add_argument("--board", default=None, help="JSON file of [frame, number] pairs: a changing attempts board")
-    ap.add_argument("--face-frames", type=int, default=0, help="add the intro face close-up camera (push-in length)")
+    ap.add_argument("--face-frames", type=int, default=0, help="add the intro face camera (push-in length)")
+    ap.add_argument("--face-shot", default="close", choices=["close", "waist", "desk"])
+    ap.add_argument("--character", default="rupert", choices=["rupert", "judge", "runner"])
+    ap.add_argument("--card", default=None, help="judge: score card text")
+    ap.add_argument("--card-from", type=int, default=1, help="judge: frame the card appears")
+    ap.add_argument("--swarm", action="store_true", help="build a Rupert for EVERY attempt in the replay file")
+    ap.add_argument("--camera-cuts", default=None, help="JSON file of [frame, camera name]: switch cameras mid-shot")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:])
     replay, attempt, out, screen_text = args.replay, args.attempt, args.out, args.screen
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -317,7 +347,29 @@ def main():
     stadium = bpy.data.collections.new("stadium")
     bpy.context.scene.collection.children.link(rupert)
     bpy.context.scene.collection.children.link(stadium)
-    build_rupert(empties, rupert, args.costume)
+    if args.swarm:
+        import numpy as np
+        import bl_helpers
+        bl_helpers.LITE = True
+        build_rupert(empties, rupert, args.costume)
+        for i in range(1, np.load(replay)["xpos"].shape[1]):
+            others = bpy.data.collections.new(f"rupert_{i}")
+            bpy.context.scene.collection.children.link(others)
+            build_rupert(import_replay(replay, i, prefix=f"r{i}"), others, args.costume)
+        for obj in bpy.data.objects:          # crowd shot: no extra smoothing passes
+            for mod in [m for m in obj.modifiers if m.type == "SUBSURF"]:
+                obj.modifiers.remove(mod)
+    elif args.character == "rupert":
+        build_rupert(empties, rupert, args.costume)
+    else:
+        import characters
+        characters.build_character(empties, rupert, args.character)
+        if args.character == "judge":
+            bpy.context.scene.frame_set(1)
+            p = empties["pelvis"].matrix_world.translation
+            characters.build_desk((p.x, p.y), rupert)
+            if args.card:
+                characters.build_score_card(empties, rupert, args.card, args.card_from)
     build_stadium(stadium, screen_text)
     y_far = lane_edge(N_LANES + 1)
     board = attempts_board.build_board(stadium, (-4.5, y_far + 1.0, 1.3), digit_h=0.8)
@@ -330,10 +382,18 @@ def main():
     build_world_and_light()
     build_cameras(empties)
     if args.face_frames:
-        build_face_camera(empties, args.face_frames)
+        build_face_camera(empties, args.face_frames, args.face_shot)
+    if args.swarm:
+        build_swarm_camera()
+    if args.camera_cuts:
+        import json
+        scene = bpy.context.scene
+        for frame, cam in json.loads(Path(args.camera_cuts).read_text()):
+            scene.timeline_markers.new(f"cut_{frame}", frame=frame).camera = scene.objects[cam]
     render_settings()
     import numpy as np
-    if "cuts" in np.load(replay):
+    z = np.load(replay)
+    if "cuts" in z or "resets" in z:
         bpy.context.scene.render.motion_blur_position = "START"   # blur never reaches back across a cut
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(Path(out).resolve()))

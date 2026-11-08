@@ -59,16 +59,27 @@ Honesty notes for the script:
 - The attempt counter in each run counts that run's attempts. For the whole-story total, add the runs together and call it "total attempts".
 
 
-## Running order (draft, 2026-11-08)
-Tom's outline, with Claude's suggestion to tell three cheats in full before the rapid reel. Tom to confirm.
-1. **Intro.** Face close-up, then attempt #1: he collapses. "He's useless." Then the series promise ("over this series I'll teach him everything from X to Y"). Today: 100 m.
-2. **How he learns.** A few early runs with pop-ups (points, attempts, trial and error). About a minute.
-3. **Timelapse.** The counter spins up.
-4. **Three cheats in full** (suggested: #2 leaning back, #5 knees, #6 T-rex). For each: timelapse, a cinematic "breakthrough!", the reveal that he's cheating, "so we gave him a new reward".
-5. **Frustration reel.** All eight cheats rapid-fire, mocked, with a cheat count: the low point.
-6. **The judge.** A dramatic intro, plus the real runners he studied.
-7. **Final timelapse, then the cinematic 100 m** (EXP-010, if it works).
-8. **Outro.** His time against an ordinary person and against Bolt, then the EP02 tease.
+## Running order (Tom, 2026-11-08)
+1. **Intro.** Rupert stands at the start line and waves ("This is Rupert"), then a face close-up. Attempt #1: he falls flat on his face. "He's useless." Series promise ("over this series I'll teach him everything from X to Y"). Today: 100 m.
+2. **How he learns.** A few early runs with pop-ups (points, attempts, trial and error).
+3. **For every cheat, a chapter:** training timelapse (swarm + fast-cut montage, counter spinning), then a cinematic breakthrough, then the reveal that he's cheating, then the fix ("we gave him a new reward"), then the next timelapse.
+4. **Frustration beat** after cheat 8 (optional rapid recap).
+5. **The judge.** Introduced like Rupert: a close-up push-in on the stern Olympic panel judge at his desk. Then the real runner he studied (a jogger, looped), then score cards.
+6. **Final timelapse, then the cinematic 100 m** (EXP-010).
+7. **Outro.** His time against an ordinary person and against Bolt, then the EP02 tease.
+
+## Characters
+- **Rupert:** 70s kit (`costumes.py`).
+- **The judge** (`blender/characters.py`, look "judge"): bald with grey professor tufts, glasses, walrus moustache, stern face, navy suit, red tie. Sits at a "JUDGE" desk beside lane 1 at the finish, and holds up score cards. Tom chose the Olympic panel judge style.
+- **The real runner** (look "runner"): darker skin, short black hair, blue kit. Moves with a real CMU jogger's stride (09_01, 3.9 m/s, one stride looped). Show this one as "what the judge studied". Not a sprinter, and no real-person lookalike (Tom agreed: the recordings are joggers; sprinting is for EP02).
+- All three share Rupert's skeleton and cartoon head style. The wave and the judge's poses are hand animation (`rupert/poses.py`), not physics.
+
+## The counter
+A running total over all training, in story order (`rupert/ep01_story.py`), ending at **about 26 million attempts**. Cheat #1's footage comes from the start of EXP-006, standing in for the stock-setup run that wasn't saved. The cheat-reel clips still show per-run numbers, so re-render them with running totals before the edit.
+
+## Timelapse shots (per chapter, `python -m rupert.make_sequence swarm|montage --chapter <name>`)
+- **swarm:** 24 Ruperts practising at once, like real training: practice behaviour (randomness on), and each one restarts at the start line the moment his attempt ends. Three check-ins through the chapter, with cuts between them.
+- **montage:** about 16 fast cuts (0.6 s each) between different test attempts across the chapter, switching between three cameras. The last check-in (the cheat itself) is held back for the reveal.
 
 ## Finished shots (renders/, not in git)
 - `renders/cheat_reel/`: cheats 1 to 8 (see the table above).

@@ -174,6 +174,9 @@ def attach(obj, parent, pos=(0, 0, 0), quat=(1, 0, 0, 0)):
 
 
 # ---- metaball skins ----------------------------------------------------------------
+LITE = False   # True for crowd shots (many Ruperts far away): coarser skin and clothes, less GPU memory
+
+
 def metaball_mesh(name, elements, coll, resolution=0.012):
     """elements: (kind 'ball'|'capsule', matrix, surface radius, half length along local Z).
 
@@ -181,7 +184,7 @@ def metaball_mesh(name, elements, coll, resolution=0.012):
     """
     to_z = Quaternion((0, 1, 0), -math.pi / 2)     # metaball capsules run along X; ours along Z
     mb = bpy.data.metaballs.new(name)
-    mb.resolution = mb.render_resolution = resolution
+    mb.resolution = mb.render_resolution = resolution * (2.5 if LITE else 1.0)
     mb.threshold = 0.6
     for kind, m, r, h in elements:
         e = mb.elements.new(type="CAPSULE" if kind == "capsule" else "BALL")
