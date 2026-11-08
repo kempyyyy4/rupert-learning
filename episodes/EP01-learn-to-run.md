@@ -58,3 +58,26 @@ Honesty notes for the script:
 - Fixes 1, 2, 4 and 5 included **penalties and rules**, not only rewards. "Rewards and rules" or "rewards and punishments" keeps it true.
 - The attempt counter in each run counts that run's attempts. For the whole-story total, add the runs together and call it "total attempts".
 
+
+## Running order (draft, 2026-11-08)
+Tom's outline, with Claude's suggestion to tell three cheats in full before the rapid reel. Tom to confirm.
+1. **Intro.** Face close-up, then attempt #1: he collapses. "He's useless." Then the series promise ("over this series I'll teach him everything from X to Y"). Today: 100 m.
+2. **How he learns.** A few early runs with pop-ups (points, attempts, trial and error). About a minute.
+3. **Timelapse.** The counter spins up.
+4. **Three cheats in full** (suggested: #2 leaning back, #5 knees, #6 T-rex). For each: timelapse, a cinematic "breakthrough!", the reveal that he's cheating, "so we gave him a new reward".
+5. **Frustration reel.** All eight cheats rapid-fire, mocked, with a cheat count: the low point.
+6. **The judge.** A dramatic intro, plus the real runners he studied.
+7. **Final timelapse, then the cinematic 100 m** (EXP-010, if it works).
+8. **Outro.** His time against an ordinary person and against Bolt, then the EP02 tease.
+
+## Finished shots (renders/, not in git)
+- `renders/cheat_reel/`: cheats 1 to 8 (see the table above).
+- `renders/ep01_shots/` (made by `python -m rupert.make_sequence intro|timelapse|judge`):
+  - `intro_1_face_closeup.mp4`: 4.5 s slow push-in on his face at the start line (no counter).
+  - `intro_2_first_attempt_collapse.mp4`: attempt #1, real speed. He falls flat on his face.
+  - `intro_3_collapse_slowmo_4x.mp4`: the same fall in 4x slow motion, side view.
+  - `timelapse_early_training.mp4`: fixed wide shot of the start line. 16 attempts from successive check-ins (EXP-009, 0 to 80M steps) at double speed, with the board and counter climbing from 1 to about 850,000. He goes from collapsing instantly to walking off.
+  - `judge_real_runners.mp4`: the real runners the judge studied, fitted onto Rupert's body. Four play in full, then the other 22 flash by while a "REAL RUNNER" counter races to 26.
+- Honesty notes:
+  - The attempt #1 clips keep the physics going after the attempt officially ended (on his knees), so he finishes falling. The brain and the moves are unchanged.
+  - The judge clips are real people's movements on Rupert's body, not Rupert. Say so on screen.

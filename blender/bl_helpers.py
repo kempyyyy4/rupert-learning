@@ -10,6 +10,27 @@ METABALL_SCALE = 1 / 0.57   # Blender metaball: the surface sits at ~0.57 x the 
 
 
 # ---- materials ---------------------------------------------------------------------
+def fcurves(obj):
+    """An object's animation curves (works before and after Blender 5's layered actions)."""
+    ad = obj.animation_data
+    if not ad or not ad.action:
+        return []
+    if hasattr(ad.action, "fcurves"):
+        return ad.action.fcurves
+    from bpy_extras.anim_utils import action_get_channelbag_for_slot
+    bag = action_get_channelbag_for_slot(ad.action, ad.action_slot)
+    return bag.fcurves if bag else []
+
+
+def set_interpolation(obj, mode, frames=None):
+    """Set how keys blend into the next one: 'CONSTANT' (snap), 'LINEAR' or 'BEZIER'.
+    frames: only the keys on these frames (default: every key)."""
+    for fc in fcurves(obj):
+        for kp in fc.keyframe_points:
+            if frames is None or int(round(kp.co.x)) in frames:
+                kp.interpolation = mode
+
+
 def material(name, rgb, rough=0.5, emit=0.0, sheen=0.0):
     m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     m.use_nodes = True

@@ -124,3 +124,10 @@ def set_number(board, frame, number):
             obj.color = (1, 1, 1, 1) if seg in led.SEGMENTS[ch] else (0, 0, 0, 1)
             obj.keyframe_insert("color", frame=frame)
     prefs.keyframe_new_interpolation_type = old
+
+
+def snap_numbers(board):
+    """Make every number change on the board instant (call once, after all set_number calls)."""
+    for segs in board["digits"]:
+        for obj in segs.values():
+            H.set_interpolation(obj, "CONSTANT")

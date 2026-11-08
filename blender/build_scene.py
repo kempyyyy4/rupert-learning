@@ -218,6 +218,26 @@ def build_world_and_light():
     scene.collection.objects.link(obj)
 
 
+def build_face_camera(empties, frames):
+    """Intro close-up: slow push-in on Rupert's face while he stands on the start line (frames 1..frames)."""
+    scene = bpy.context.scene
+    scene.frame_set(1)
+    h = empties["head"].matrix_world.translation.copy()
+    look = bpy.data.objects.new("cam_face_target", None)
+    look.location = (h.x, h.y, h.z + 0.02)
+    scene.collection.objects.link(look)
+    cam = bpy.data.cameras.new("cam_face")
+    cam.lens = 85
+    cam.dof.use_dof, cam.dof.focus_object, cam.dof.aperture_fstop = True, look, 2.8
+    obj = bpy.data.objects.new("cam_face", cam)
+    scene.collection.objects.link(obj)
+    t = obj.constraints.new("TRACK_TO")
+    t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
+    for frame, (dx, dy, dz) in ((1, (2.6, -1.5, 0.05)), (frames, (1.4, -0.8, 0.02))):
+        obj.location = (h.x + dx, h.y + dy, h.z + dz)
+        obj.keyframe_insert("location", frame=frame)
+
+
 def build_cameras(empties):
     """Main: a 3/4 tracking camera ahead of Rupert. Also a straight side camera."""
     scene = bpy.context.scene
@@ -287,6 +307,8 @@ def main():
     ap.add_argument("--screen", default="TRAINING", help="text on the stadium's big screen")
     ap.add_argument("--costume", default="ep01_70s")
     ap.add_argument("--attempts", type=int, default=0, help="number on the stadium attempts board")
+    ap.add_argument("--board", default=None, help="JSON file of [frame, number] pairs: a changing attempts board")
+    ap.add_argument("--face-frames", type=int, default=0, help="add the intro face close-up camera (push-in length)")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:])
     replay, attempt, out, screen_text = args.replay, args.attempt, args.out, args.screen
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -300,9 +322,19 @@ def main():
     y_far = lane_edge(N_LANES + 1)
     board = attempts_board.build_board(stadium, (-4.5, y_far + 1.0, 1.3), digit_h=0.8)
     attempts_board.set_number(board, 1, args.attempts)
+    if args.board:
+        import json
+        for frame, number in json.loads(Path(args.board).read_text()):
+            attempts_board.set_number(board, frame, number)
+        attempts_board.snap_numbers(board)
     build_world_and_light()
     build_cameras(empties)
+    if args.face_frames:
+        build_face_camera(empties, args.face_frames)
     render_settings()
+    import numpy as np
+    if "cuts" in np.load(replay):
+        bpy.context.scene.render.motion_blur_position = "START"   # blur never reaches back across a cut
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(Path(out).resolve()))
     print(f"Saved scene {out}")

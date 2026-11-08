@@ -40,6 +40,9 @@ def import_replay(path, attempt=0):
     alive = data["alive"][:, attempt]
     names = [str(n) for n in data["body_names"]]
     fps = int(round(float(data["fps"])))
+    # Sequences (rupert/make_sequence.py) join several pieces with hard cuts between them.
+    # Straight-line keys, and the last key before each cut holds still, so nothing smears across a cut.
+    cuts = {int(c) for c in data["cuts"]} if "cuts" in data else None
 
     # stop the clip one second after he falls (the rest is him lying still)
     n_frames = len(alive)
@@ -67,6 +70,11 @@ def import_replay(path, attempt=0):
             obj.rotation_quaternion = [float(v) for v in xquat[f, b]]
             obj.keyframe_insert("location", frame=f + 1)
             obj.keyframe_insert("rotation_quaternion", frame=f + 1)
+    if cuts is not None:
+        from bl_helpers import set_interpolation
+        for obj in empties.values():
+            set_interpolation(obj, "LINEAR")
+            set_interpolation(obj, "CONSTANT", cuts)   # key on frame c = last frame before the cut
     print(f"Imported {path}, attempt {attempt}: {n_frames} frames at {fps} fps")
     return empties
 
