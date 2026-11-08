@@ -98,7 +98,7 @@ if __name__ == "__main__":
 JUDGE_AT = (104.0, -5.8)      # just past the finish line, beside lane 1, facing down the track (+x)
 JUDGE_ARMS_DESK = {"right": ((0.10, -0.27, -0.33), (0.43, -0.15, -0.30)),
                    "left": ((0.10, 0.27, -0.33), (0.43, 0.15, -0.30))}
-JUDGE_CARD_UP = ((0.12, -0.42, -0.22), (0.22, -0.46, 0.14))   # right hand holds a score card up by his head
+JUDGE_CARD_UP = ((0.10, -0.47, -0.22), (0.16, -0.60, 0.08))   # right hand holds a score card up by his head
 
 
 def _seated(m, d):

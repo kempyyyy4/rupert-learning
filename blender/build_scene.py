@@ -219,8 +219,8 @@ def build_world_and_light():
 
 
 FACE_SHOTS = {   # (camera offset from his head at the start, at the end, aim point below the head)
-    "close": ((2.6, -1.5, 0.05), (1.4, -0.8, 0.02), 0.0),     # head and shoulders -> face
-    "waist": ((5.2, -1.3, -0.3), (4.3, -1.05, -0.25), 0.28),  # waist up, nearly face-on, room for a raised hand
+    "close": ((2.6, -1.5, 0.05), (1.6, -0.92, 0.03), 0.0),    # head and shoulders -> face
+    "waist": ((5.8, -1.45, -0.2), (4.9, -1.2, -0.16), 0.12),  # waist up, nearly face-on, room for a raised hand
     "desk": ((5.6, -3.1, -0.15), (5.1, -2.8, -0.17), 0.36),       # the judge at his desk, room for the card
 }
 
