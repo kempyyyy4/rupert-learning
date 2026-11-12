@@ -46,7 +46,7 @@ In narration, each fix is "giving Rupert a reward" (or a rule) for doing somethi
 | 6 | **T-rex scuttle**: arms clamped to his chest, feet scurrying under his hips at Bolt speed (100 m in 10.0 s) | EXP-007 `rupert_20261107_1323/step_0000875888640.mp4` | Rewarded for **swinging his arms**; given an **ordinary young man's body** (lab-tested strength, muscles that take time to switch on) |
 | 7 | **Lopsided gallop with a frozen 'superhero' arm**: same leg always leads, arms held in a fixed 'opposite' pose to fake the arm swing. (Now at a realistic 13.5 s per 100 m.) | EXP-008 `rupert_20261107_2130/step_0000757923840.mp4` | Arm reward only for arms that actually **swing**; full stride points only for **even steps** |
 | 8 | **Skipping gallop**: arms finally swing, but the same leg always leads and the other hops in behind it (a loophole in the even-steps rule). 15.4 s per 100 m. | EXP-009 `rupert_20261108_0008/step_0000698941440.mp4` | TBC: show him real runners |
-| 9 | ? (the ending) | EXP-010: **style judge**, which has watched 26 real runners | All the special rules switched off; a second AI judges whether he looks human |
+| 9 | **No cheat: he runs like a person.** Every gait measure inside the real joggers' range; 15.2 s per 100 m; crouch-and-drive start | EXP-010 `rupert_20261112_1312/step_0000846397440.mp4` | All the special rules switched off; a second AI (the judge, which watched 26 real runs) scores whether he looks human |
 
 **Finished-look clips of cheats 1–8** (1080p, stadium, 70s kit, attempts counter, 6 s each): `renders/cheat_reel/cheat1_…mp4` to `cheat8_…mp4`. Rebuild with `bash renders/cheat_reel/render_all.sh` (about 1.5 hours). Cheats 2 and 3 were re-tested for these clips (their replays weren't saved) and matched the notes: 18.5 s vs 19.2 s, and 21.6 s vs 21.8 s.
 
@@ -65,7 +65,7 @@ Honesty notes for the script:
 3. **For every cheat, a chapter:** training timelapse (swarm + fast-cut montage, counter spinning), then a cinematic breakthrough, then the reveal that he's cheating, then the fix ("we gave him a new reward"), then the next timelapse.
 4. **Frustration beat** after cheat 8 (optional rapid recap).
 5. **The judge.** Introduced like Rupert: a close-up push-in on the stern Olympic panel judge at his desk. Then the real runner he studied (a jogger, looped), then score cards.
-6. **Final timelapse, then the cinematic 100 m** (EXP-010).
+6. **Final timelapse, then the cinematic 100 m** (EXP-010, step 846M: 15.2 s).
 7. **Outro.** His time against an ordinary person and against Bolt, then the EP02 tease.
 
 ## Characters
