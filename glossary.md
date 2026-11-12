@@ -73,3 +73,5 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 - **Retargeting**: fitting a recording of one body onto a different body (here, CMU runners onto Rupert, who has different proportions).
 - **Style judge (discriminator, AMP)**: a second AI that watches real runners and Rupert, and tries to tell which is which. Rupert gets points for fooling it. Both keep improving: as Rupert looks more human, the judge gets pickier. AMP stands for Adversarial Motion Priors.
 - **Reference state initialisation**: starting some practice attempts mid-stride in a real runner's pose, so Rupert experiences what running feels like early on.
+- **Reward hacking / specification gaming**: when an AI scores well by doing something you didn't mean, because it follows the exact rules you wrote, not what you wanted. All 8 of Rupert's cheats are this. Famous example: a boat-racing AI that went round in circles hitting targets instead of finishing the race.
+- **Gait check** (`rupert/gait.py`): our tool that measures how Rupert runs (step lengths, lean, arm swing, knee bend) and compares it with real runners, to spot cheats in numbers.

@@ -10,6 +10,12 @@ Newest first. Each entry: what we decided, and why.
   - **Teacher Rupert** at a drop-down whiteboard explains the learning.
   - The cheats with fixes, then the judge scoring Rupert's bad runs with cards, then the real run and the outro.
   - Full details are in `episodes/EP01-learn-to-run.md`.
+- **EP01 animation and script calls (Tom).**
+  - Rupert smiles and waves in the intro.
+  - Hand-animated shots are fine wherever the story needs them (preview montage, Teacher Rupert, the judge). The preview montage is a 'coming in this series' preview, not a dream.
+  - Board drawings are in our own style, not screenshots.
+  - The judge is mainly an animated character: his score cards don't need to be real scores (so the narration must not call them real). He sits on the sideline in runs after his introduction.
+  - The script is a guideline for Tom's own words. Only the facts are fixed. Claude drafts, Tom edits: `episodes/EP01-script.md`.
 
 ## 2026-11-08
 - **Style judge (AMP) for EP01's ending** (Tom chose B2 over 'copy one runner': better story). Rupert found cheat #8 (skipping gallop, EXP-009), so as agreed we stop adding rules and show him real runners.
