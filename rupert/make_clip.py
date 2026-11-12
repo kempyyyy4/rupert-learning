@@ -43,6 +43,8 @@ def main():
     ap.add_argument("--costume", default="ep01_70s")
     ap.add_argument("--scale", type=int, default=100, help="resolution percent of 1920x1080")
     ap.add_argument("--rebuild", action="store_true", help="rebuild the Blender scene even if cached")
+    ap.add_argument("--chapter", default=None,
+                    help="EP01 chapter (rupert/ep01_story.py): counter shows the running total over the whole video")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
 
@@ -53,8 +55,13 @@ def main():
         run([sys.executable, "-m", "rupert.evaluate", "--run", run_dir, "--checkpoint",
              run_dir / "checkpoints" / f"{stem}.pkl", "--attempts", 8])
 
-    attempt = attempts_by_step(run_dir, a.step)
-    blend = run_dir / "blender" / f"{stem}_{a.costume}_r{a.replay}.blend"
+    if a.chapter:
+        from rupert.ep01_story import counter
+        attempt = counter(a.chapter, a.step)
+    else:
+        attempt = attempts_by_step(run_dir, a.step)
+    tag = f"_{a.chapter}" if a.chapter else ""
+    blend = run_dir / "blender" / f"{stem}_{a.costume}_r{a.replay}{tag}.blend"
     scripts_time = max(p.stat().st_mtime for p in (ROOT / "blender").glob("*.py"))
     if a.rebuild or not blend.exists() or blend.stat().st_mtime < scripts_time:
         run([BLENDER, "-b", "--python", ROOT / "blender" / "build_scene.py", "--", npz,

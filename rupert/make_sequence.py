@@ -323,7 +323,11 @@ def main():
     ap.add_argument("shot", choices=["intro", "timelapse", "judge", "swarm", "montage"])
     ap.add_argument("--chapter", default="cheat1_stands_still", help="for swarm/montage: see rupert/ep01_story.py")
     ap.add_argument("--scale", type=int, default=100, help="resolution percent of 1920x1080 (25 = quick test)")
+    ap.add_argument("--out-dir", default=None, help="folder for the clips (default renders/ep01_shots)")
     a = ap.parse_args()
+    global OUT
+    if a.out_dir:
+        OUT = Path(a.out_dir)
     OUT.mkdir(parents=True, exist_ok=True)
     if a.shot in ("swarm", "montage"):
         {"swarm": swarm, "montage": montage}[a.shot](a.chapter, a.scale)
