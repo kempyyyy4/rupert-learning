@@ -1,259 +1,262 @@
-# EP01 script draft: Rupert learns to run
+# EP01 script: Rupert learns to run
 
-**Draft 1, 2026-11-12 (Claude).** Tom edits it, then records a rough guide voiceover; the shots are timed to that.
+**Draft 2, 2026-11-12.** The VO is Tom's words; I only fixed typos.
 
 ## How to read this
-- **VO:** a suggestion only. Say it your way, change the jokes, cut or add whatever you like.
-- **FACT:** a checked fact. Change the wording if you want, but keep the numbers and the meaning. If you change one, tell me and I'll re-check it.
+- **(Claude)** marks my suggestions. Keep them, change them or cut them.
+- **⚠** marks a fact problem to resolve before recording.
 - **SHOT:** what's on screen.
   - **[have]** = already rendered or ready to render.
   - **[build]** = I still need to make it.
-- **(beat)** = a pause or silence for comedy. Let the picture do the work.
+- **(beat)** = a pause or silence for comedy.
 
-Target length: about 15–20 minutes.
+**Plan (Tom):** make the "stock" video first (narration + shots). Then add graphs, overlays and Teacher Rupert board moments on top. Overlay ideas are marked **OVERLAY**.
 
 ---
 
 ## 1. Cold open
 
-**SHOT [build]:** Rupert stands on the start line in his 70s kit. The camera starts on his face and pulls back wide, timed to your line. He smiles and waves.
+**SHOT [build]:** Close on Rupert's face on the start line. Pull back wide. He smiles and waves.
 
 **VO:** "This is Rupert."
 
-**SHOT [build]:** Rupert stops waving and lowers his arm. (beat) He falls flat on his face. [have: the collapse from attempt #1, which is real footage]
+**SHOT [have]:** Attempt #1: he faceplants. (beat)
 
-**VO:** (beat) "Rupert is useless."
+**VO:** "Rupert is useless."
 
-**VO:** "He can't run. He can't walk. He can't even stand up. Right now his brain is a blank: he has no idea what his legs are for."
+**VO:** "He can't run, he can't walk. He can't even stand up."
 
-**FACT:** On attempt #1 his brain is random: nobody has told it anything yet. (True of every fresh training run.)
+## 2. Series preview
 
-## 2. The series promise (preview montage)
+**VO:** "Over this series we are going to be teaching him to do all of this and more."
 
-**SHOT [build]:** A quick-cut 'coming soon' montage, about 2 s per clip, all hand-animated:
-- Rupert dunking a basketball
-- Rupert at a trading desk covered in screens
-- Rupert on a date, flirting
+**SHOT [build]:** Preview clips, hand-animated, about 2 s each, one per line.
+- **VO:** "He'll learn to ride a bike." **SHOT:** Rupert wobbling along on a bike.
+- **VO:** "He might go on a date." **SHOT:** Rupert at a candlelit table, smiling.
+- **VO:** "And if he's lucky, he could become a stock-trading millionaire." **SHOT:** Rupert at a desk of screens, with green numbers going up.
 
-**VO:** "But over this series, I'm going to teach him everything. Sport. Money. Love." (or your own list)
+**VO:** "So I know we aren't exactly reinventing the wheel teaching him how to run, but to do all of that, we have to start somewhere."
 
-**VO:** "But they say you have to walk before you can run." (beat) "We're skipping that."
+**VO:** "If you want to see Rupert learn something, stick it in the comments. But they do say you have to walk before you can run." (beat) "So without further ado…"
 
-**SHOT [have]:** Title card: "EPISODE 1: LEARN TO RUN". Then the empty track, ready.
+**SHOT [have]:** Title card: **EPISODE 1: RUPERT LEARNS TO RUN**
 
-## 3. The first run
+## 3. How he learns
 
-**SHOT [have]:** Attempt #1 again, from the side, at real speed. Then a few more early attempts. The counter ticks: 1, 2, 3…
+**SHOT [have]:** Early attempts from the side, with the counter ticking 1, 2, 3…
 
-**VO:** "Here's how it works. I don't show him how to run. I don't move his legs for him. I just give him one goal…"
+**VO:** "Here's how it works. I don't show Rupert how to run. I don't move his legs. I just reward him based on his actions."
 
-## 4. How he learns (Teacher Rupert)
+**VO:** "Rupert learns the same way a dog learns tricks: he gets a treat when he does something good. And he gets electrocuted when he does something bad."
 
-**SHOT [build]:** A whiteboard drops down from the top of frame (comedy *thunk*). Teacher Rupert stands beside it in a teacher's outfit (tweed jacket, glasses), holding a pointing stick. He points at each item as it appears. All the board drawings are in our own style (chalky, hand-drawn look), built from his real data.
+**SHOT [build]:** Rupert gets zapped: a cartoon flash, a skeleton-flash frame, smoke, hair standing up.
 
-### Lesson 1: Points (rewards)
+**VO:** "I'm kidding." (beat) "Sort of."
+- (Claude) This works: he really does lose points for bad things, like wasting energy or drifting out of his lane.
 
-**VO:** "Rupert learns like a dog learns tricks: he gets a treat when he does something good. Except Rupert's treat is points."
+**VO:** "Each time Rupert moves, he gets points. These are mostly given for moving forward along the track and for staying up. The better he does this, the more points he gets."
+- **OVERLAY / Teacher Rupert board:** forward arrow "+ points", fallen Rupert "attempt over".
 
-**FACT:**
-- Every fiftieth of a second (50 times a second), Rupert's brain decides how hard to push every joint in his body.
-- Each moment, he gets points, mostly for moving forward along the track and for staying up.
+**VO:** "His whole life has one rule: get as many points as possible. Nobody tells him how."
 
-**BOARD:**
-- A cartoon Rupert.
-- An arrow forward: "+ points".
-- A fallen Rupert: "attempt over".
+**VO:** "Now you're understanding how we can transfer this system to other skills."
 
-**VO:** "His whole life has one rule: get as many points as possible. Nobody tells him *how*."
+**VO:** "At first, every move is random. But whenever something random happens that scores more points, Rupert's brain tells him to do more of that. This is called reinforcement learning: learning by trial and error."
 
-### Lesson 2: Trial and error
+**VO:** "Rupert's brain is what's called a neural network: about 135,000 numbers, all random at the start. Learning means slowly adjusting those numbers based on his actions."
+- **OVERLAY:** his real score graph, drawn in our style.
 
-**VO:** "At first, every move is random. But whenever something random happens to score more points, his brain nudges itself to do more of that."
+**VO:** "And because he's a computer programme, I can make lots of him."
 
-**FACT:**
-- This is called **reinforcement learning**: learning by trial and error, from rewards.
-- Rupert's brain is a neural network: about 135,000 numbers, all random at the start. Learning means slowly adjusting those numbers.
+**SHOT [have]:** The swarm: 24 Ruperts falling at once, with the counter spinning.
 
-**BOARD:** a squiggly graph going up, with the label "his real score, attempt by attempt" (his real data, redrawn).
+**VO:** "2,048 Ruperts practise at the same time, all sharing one brain. One attempt ends when he falls over, or after 20 seconds."
 
-### Lesson 3: Lots of Ruperts
+**VO:** "One full training session is about a billion moments of practice: roughly 230 days of Rupert-time, squeezed into about an hour on a rented computer. So in an hour he gets more practice than you'll get all year."
 
-**SHOT [have]:** The practice swarm: 24 Ruperts falling over at once, with the counter spinning.
+**SHOT [have]:** Timelapse: the swarm, then the fast-cut montage, with music. The counter races up.
 
-**VO:** "And because he's a computer program, I can make a lot of him."
+**VO:** "Here's the thing about AI. It doesn't do what you mean. It does exactly what you reward."
 
-**FACT:**
-- 2,048 Ruperts practise at the same time, all sharing one brain.
-- One attempt ends when he falls (or after 20 seconds).
-- One full training session is about a billion moments of practice: roughly 230 days of Rupert-time, squeezed into about an hour on a rented computer.
+**VO:** "An AI was trained to play a boat-racing video game called CoastRunners. The goal was to finish the race as fast as possible, but it got points for hitting targets along the way. So it learned to go round in circles, hitting the same targets over and over, instead of finishing the race."
+- **SHOT [build]:** Teacher Rupert board: a cartoon boat going round in circles. (Don't use the game's real footage or logo unless we check the rights.)
 
-**VO:** "So in an hour he gets more practice than you'll get all year." (joke; fine to keep)
+**VO:** "Researchers call this specification gaming. DeepMind keeps a list of dozens of real examples."
 
-### Then: the timelapse
+**VO:** "From this, we move on to Rupert's first cheat."
 
-**SHOT [have]:** The swarm timelapse, then the fast-cut montage. The counter races into the hundreds of thousands. Use music here.
+## 4. The cheats
 
----
+**Shape of every cheat:**
+1. A timelapse.
+2. Breakthrough!
+3. (beat) The cheat.
+4. A title card.
+5. The fix.
 
-## 5. The cheats
+### Cheat 1: STANDING STILL
+**VO:** "Rupert realised that if he never moves, he never falls, all the while scoring points for staying up."
 
-**Shape of every chapter:**
-1. A timelapse (counter spinning).
-2. A cinematic "breakthrough!" moment (he finishes the 100 m!).
-3. (beat) Then we look closer, and he's cheating.
-4. The fix: "so I gave him a new reward / a new rule".
-5. Timelapse into the next chapter.
+**VO:** "This was resolved by more points being awarded for moving forward than for standing up."
 
-**SHOT [have]:** Timelapse, then the cheat clip (slow motion + side angle), for every cheat.
+**(Claude) An honesty line, once, here:** "And every time I change the rules, I wipe his memory and he starts again from zero." The plan is to say this out loud, because each fix really was a fresh Rupert. The "one last fresh Rupert" line at the end needs it set up.
 
-**SHOT [build]:** From the moment the judge is introduced (section 6), he can sit at his desk on the sideline in every later run. Before that he isn't there.
+### Cheat 2: THE SNIPER'S NIGHTMARE
+**VO:** "His first finish! YAYYYY." (beat) "Wait. But he's shuffling… doing the limbo."
 
-### Teacher Rupert, lesson 4: Why he cheats (put it at cheat 1 or 2)
+**VO:** "This one was fixed by full points only being awarded when he runs standing tall."
 
-**VO:** "Here's the thing about AI. It doesn't do what you *mean*. It does exactly what you *reward*."
+**FACT (optional):** 100 m in about 19 seconds, with his head about 38 cm behind his hips.
 
-**FACT (real-world example):**
-- An AI was trained to play a boat-racing video game (CoastRunners).
-- The goal was to finish the race as fast as possible, but it got points for hitting targets along the way.
-- So it learned to go round in circles, hitting the same targets over and over, instead of finishing the race.
-- Researchers call this **specification gaming** (or reward hacking). DeepMind keeps a list of dozens of real examples.
-- Source: DeepMind, "Specification gaming: the flip side of AI ingenuity" (2020).
-- Don't add the extra details you may have heard (the boat catching fire, scoring 20% more than humans). I couldn't check those against the original source.
+### ⚠ Cheat 3: THE POGO STICK (missing from draft 2)
+- Your script jumps from cheat 2 to the knees-and-forgetting one, but you still say "8 cheats, eight new rules" later.
+- Either put this back or change the count to 7.
 
-**BOARD:** A boat going round in circles. Then Rupert, looking innocent.
+**Suggested VO:** "Then he went full pogo stick: stiff legs, boing, boing, boing, with one arm held out like a zombie."
 
-### Cheat 1: Standing still
-- **Cheat:** He realised that if he never moves, he never falls, and he still scores points for staying up.
-- **VO:** "Breakthrough! He's standing!" (beat) "…He's just standing."
-- **Fix:** Points for moving forward. Only a tiny reward for just staying up.
+**Fix:** a reward for long strides; told off for flailing his arms.
 
-### Cheat 2: The leaning-back shuffle
-- **Cheat:** He finishes 100 m, bent over backwards (his head about 38 cm behind his hips, gazing at the sky), taking tiny steps. 100 m in about 19 s.
-- **VO:** "He finished! He ran the 100 metres!" (beat, then the side-on angle) "…like he's doing the limbo."
-- **Fix:** Full points only when he runs **tall**.
+**FACT:** about 22 s per 100 m.
 
-### Cheat 3: The pogo stick
-- **Cheat:** A stiff-legged bounce with a 'zombie arm'. About 22 s.
-- **Fix:** Reward for **long strides**; told off for flailing his arms.
+**VO:** "Rupert seems to have been replaced by [⚠ see note], because when you think he can cheat no more, he does it again."
+- ⚠ The Nvidia CEO joke names a real person as a cheat, and most viewers won't get the reference. I'd swap it, e.g. "…replaced by my little brother at Monopoly".
 
-### Cheat 4: The robot (and forgetting everything)
-- **Cheat:**
-  - A robot run on dead straight legs. 15.2 s.
-  - Then, overnight, he **forgot how to run altogether** and started falling over again.
-- **VO:** "Then something weird happened. Overnight, he forgot." (show the falls)
-- **Fix:** Reward for **bending his knees**, and we made him learn more carefully, so new lessons don't wipe out old ones.
+### Cheat 4: THE MIDDLE-AGED SHUFFLE TO THE BATHROOM (and forgetting everything we've taught him so far)
+**VO:** "This one takes the cake. Not only was he running like a constipated pensioner, overnight he forgot how to run altogether and started falling over again."
 
-### Cheat 5: Running on his knees
-- **Cheat:** He ran the track on his knees. About 21 s.
-- **VO:** (silence over the clip. Let it play.)
-- **Fix:** **Knees on the ground count as a fall.**
+**VO:** "This was later fixed by a reward for bending his knees, and we altered learning so new lessons wouldn't wipe out old ones."
 
-### Cheat 6: The T-rex scuttle
-- **Cheat:** Arms clamped to his chest, feet scurrying under his hips, at **10.0 s per 100 m**. That's nearly world-record pace, for a beginner.
-- **FACT:**
-  - The cause: his body was too strong (his muscles were more like a trained athlete's).
-  - So we gave him the measured leg strength of an **ordinary 24-year-old man** (from a lab study of 178 healthy volunteers, Harbo et al. 2012).
-  - We also gave him muscles that take a moment to switch on, like real ones.
-- **Fix:** A reward for **swinging his arms**, plus the ordinary-man body.
+**FACT:** He ran on dead straight legs. Both knees locked straight; his left knee bent only 12°. 15.2 s per 100 m.
 
-### Cheat 7: The superhero gallop
-- **Cheat:** The same leg always leads, and one arm is frozen out in a 'superhero' pose to fake the arm swing. 13.5 s.
-- **Fix:** Arm points only for arms that actually **swing**. Full stride points only for **even steps**.
+**VO:** "I'll be honest, at this point I was wondering whether the juice was worth the squeeze altogether." (beat) "But then he did it."
 
-### Cheat 8: The skipping gallop
-- **Cheat:** The arms finally swing, but his left leg always leads and his right foot hops in *behind* it. This exploited a loophole in the even-steps rule. 15.4 s.
-- **VO:** "Eight cheats. Eight new rules. And every time, he finds a way round them."
+### Cheat 5: RAN THE ENTIRE 100 M ON HIS KNEES
+**VO:** "Look at him. You're not Raphinha, mate."
 
-### Frustration beat (optional)
-**SHOT [have]:** A rapid recap of all 8 cheats, about 1 s each, with the counter. Then silence.
+**VO:** "I can only hope the running track is made out of boiling hot 50-grit sandpaper and he felt every scratch on his stupid little knees."
 
-**VO:** "So I stopped writing rules."
+**VO:** "After this, we removed the reward for making it into the top 10 coldest knee slides of all time, and also counted knees on the ground as a fall."
+- **FACT:** It's fine as a joke. What actually changed: knees on the ground count as a fall, and his knee-bending reward only counts in a real running stride.
 
-### Teacher Rupert, lesson 5: Starting again (put it near cheat 3 or 4)
+**SHOT [have]:** The knees clip, played in silence first.
 
-**FACT:**
-- Every fix started a **completely fresh Rupert**: his brain was wiped and he learned again from zero under the new rules.
-- Some fixes were **punishments** (minus points), not only rewards.
+### Cheat 6: THE T-REX
+**VO:** "Are we serious here."
 
-**VO:** "Every time I changed the rules, I wiped his memory and he started from scratch. Poor guy." Say this somewhere, so we never imply it was one continuous Rupert.
+**VO:** "This wasn't his fault, actually: his body was too strong. So we gave him the measured leg strength of an ordinary 24-year-old man. We also made his muscles take a moment to switch on, like real ones, and rewarded him for swinging his arms."
 
----
+**(Claude) A great extra fact:** he ran this at **10.0 seconds per 100 m**, close to world-record pace, with his arms clamped to his chest.
+- Suggested line before "Are we serious here": "Ten seconds flat."
 
-## 6. The judge
+### Cheat 7: THE SUPERHERO GALLOP
+- **SHOT [have]:** The gallop clip. Same leg always leading; one arm frozen out like a superhero.
+- **(Claude) Suggested VO:** "He worked out that if he holds one arm out like Superman, it *looks* like he's swinging his arms."
+- **VO:** "Arm points only for arms that swing, and full stride points only for even steps."
+- **FACT (optional):** 13.5 s per 100 m.
 
-**SHOT [have]:**
-- A slow push-in on the judge at his desk, introduced just like Rupert.
-- Bald, grey tufts, glasses, walrus moustache.
-- A stern stare at the camera. (beat)
+### Cheat 8: THE SKIPPING GALLOP
+- **SHOT [have]:** The skip clip. His arms finally swing, but the left leg always leads and the right foot hops in behind it.
+- **(Claude) Suggested VO:** "Arms: finally swinging. Legs:" (beat) "skipping to school."
+- **VO:** "Eight cheats. Eight new rules. Every time, he finds a way round them."
+- **SHOT [have]:** A rapid 1-second recap of all 8 cheats. Then silence.
+- **VO:** "So I stopped writing the rules."
 
-**VO:** "So I hired a judge."
+## 5. The judge
 
-**SHOT [have]:** The real runner, jogging past the judge (the runner character with a real recorded stride).
+**SHOT [build]:**
+- Dramatic music. The judge walks in down the track: suit, glasses, moustache, a whistle round his neck.
+- He stops, stares at the camera and blows the whistle.
+- (He's the 'judge' character, now with a whistle. Tell me if you'd rather he became a tracksuit 'coach'.)
 
-**VO:** "The judge has studied one thing: real people running."
+**VO:** "So I hired a judge." (beat) "The judge wasn't as lenient as me."
 
-**FACT:**
-- The judge is a second AI. It watched recordings of real people jogging: 26 recordings of 3 people, from Carnegie Mellon University's motion-capture library.
-- It learns to tell the difference between a real runner and Rupert.
-- Rupert gets points for runs the judge thinks look real.
-- The judge only looks at his *form*, not his speed.
-- All the special rules from the cheats (run tall, knees, arm swing) were switched off. Only the basics were left (move forward, stay up, stay in your lane), plus the judge.
+**VO:** "He studied one thing: real people running."
 
-**SHOT [build]:** The judge watching Rupert's old cheat runs on the track and holding up score cards (2 for the limbo, 1 for the knees, and so on).
-- The judge and the cards are animated for the story, so the numbers are just for fun.
-- Don't say they're the judge's real scores.
+**SHOT [have]:** The real runner jogging past the judge's desk.
 
-**BOARD (Teacher Rupert, lesson 6, optional):** Real runner vs Rupert, side by side. The judge in the middle with a "?" over his head. "Fool the judge = points."
+**VO:** "The judge is a second AI. It watched recordings of real people running. It learns to tell the difference between a real runner and Rupert. Rupert gets points from the judge for runs the judge thinks look real."
 
-**FACT (honesty):** In 3 out of every 10 practice attempts, Rupert started mid-stride in a real runner's pose, which is standard for this method. Every 100 m trial you see starts from standing.
-- One line covers it: "In practice, I sometimes started him mid-stride, like a real runner."
+**SHOT [build]:** The judge at his desk, watching Rupert's old cheat runs and holding up score cards (2, 1, 0…). The numbers are for fun; don't call them real scores.
 
----
+**⚠ VO:** "All the rules we made stay, plus the judge."
+- **This is backwards.** We switched OFF all the special rules: run tall, strides, knees, arm swing, even steps.
+- Only the basics stayed: move forward, stay up, stay in your lane, don't waste energy. Plus the judge.
+- That's actually the better story. Suggested replacement: "So I deleted all eight rules. All he gets now is points for moving forward, and the judge."
 
-## 7. The finish
+**(Claude) A second honesty line:** "In practice, I sometimes started him mid-stride, like a real runner, to give him the idea."
+- This is true for 3 in 10 practice attempts. Every 100 m you see starts from standing.
 
-**SHOT [have]:** The final timelapse: the swarm, then the montage. The counter climbs past 29 million.
+## 6. The finish
 
 **VO:** "One last training session. One last fresh Rupert." (beat) "Here we go."
 
-**SHOT [build]:** The cinematic 100 m: multiple cameras, slow motion off the start, tracking shots, the judge watching from the sideline. Rupert crouches and drives off the line, then runs properly to the finish. The time comes up: **15.2 s**.
+**SHOT [have]:**
+- The final timelapse: first the swarm, mostly falling, then fewer and fewer falls. Then the montage, with real running appearing.
+- The judge watches from the sideline.
+- The counter climbs past 29 million.
 
-**FACT:**
-- His final 100 m: **15.2 seconds**. He matched that in all 8 test runs (15.25–15.37 s).
-- By the numbers, he now runs like the real joggers: his feet take turns, he leans forward, his arms swing opposite to his legs, and his knees bend like theirs. We measured all of these.
-- **Total:** about **29.4 million attempts** across every Rupert in this video, which is about **4 years** of Rupert-time practising.
-- The crouch-and-drive start was his own idea: the judge never saw anyone start from standing.
+**(Claude) The build-up. Pick what you like:**
+- **VO:** "Twenty-nine million attempts. About four years of practice. And for the first time…" (beat) "…I couldn't find the cheat."
+- **OVERLAY:** Rupert and a real runner side by side, with ticks appearing:
+  - feet take turns ✓
+  - leans forward ✓
+  - arms swing with the opposite leg ✓
+  - knees bend like a runner's ✓
 
-**SHOT [build]:** The judge slowly raises a card: 10. (beat) Or he hesitates and gives 9.
+  These are all measured; they're real.
+- **VO:** "He even invented his own start." **SHOT:** His crouch-and-drive off the line, in slow motion.
+- **FACT:** The judge only ever saw people already jogging. Nobody showed him a start.
 
-**FACT (for the tease):**
-- Usain Bolt's world record is **9.58 seconds** (Berlin, 16 August 2009).
-- When Bolt would cross the line, Rupert would be at about the **60 metre** mark (measured from his test runs).
-- Caveat: our timer starts at "go" with no reaction time, so it's slightly kind to Rupert. Fine for a fun comparison; don't claim more precision than that.
+**SHOT [build]: CINEMATIC 100 M.**
+- Low tracking camera off the start, then the side dolly at full speed.
+- A front shot as he comes at the lens.
+- The judge on the sideline, his head turning to follow him.
+- The finish in slow motion. The clock stops at **15.2**.
 
-**VO:** "Rupert runs 100 metres in 15.2 seconds. Usain Bolt does it in 9.58. If they raced, Rupert would be 40 metres behind." (beat) "…Next time."
+**SHOT [build]:** The judge slowly raises a card… 10. (Or he hesitates: 9.)
 
-## 8. Outro
+**VO:** "Rupert's final run time was 15.2 seconds. He's no Usain Bolt…"
 
-**SHOT [build]:** Rupert at the finish line, smiling and waving (same as the opening, which bookends the video nicely).
+**(Claude) To make the Bolt line land:**
+- **VO:** "Bolt's world record is 9.58. When Bolt crosses the line, Rupert would still be about here." **SHOT:** Rupert at the 60 m mark, with a ghost finish line far ahead.
+- **VO:** "…but honestly, I thought we would never make it here."
 
-**VO:** "Thanks for watching Rupert's first steps. If you want to see him dunk, trade and fall in love, subscribe, because he'll need all the support he can get."
+**FACTS:**
+- 15.2 s, matched in all 8 test runs.
+- Bolt: 9.58 s, Berlin, 16 August 2009.
+- When Bolt finishes, Rupert is about 60 m along. Caveat: our timer has no reaction time, so it's slightly kind to Rupert.
+- 29.4 million attempts in total; about 4 years of Rupert-time.
 
-**Credit (description, not narration):** Motion-capture data from the CMU Graphics Lab Motion Capture Database (wording in `mocap/README.md`).
+## 7. Outro
+
+**SHOT [build]:** Rupert at the finish line, smiling and waving, bookending the opening.
+
+**VO:** "Thanks for watching Rupert's first steps. Be sure to let me know what you want him to learn next in the comments, and please consider subscribing to follow Rupert on his learning journey."
+
+**(Claude) Options for the last beat:**
+- **Tease next time:** "Next time…" plus a quick shot of whatever EP02 is. Only once you've decided it.
+- **Button gag:** Rupert waves, turns to walk off and falls flat on his face, like the opening. Cut to black.
+- **The judge gets the last word:** he lowers his card, and on the back it says "SUBSCRIBE".
 
 ---
 
-## Build list (for after Tom's edit)
-1. **Opening:** pull-back + smile + wave. Uses Rupert's existing 'happy' face.
-2. **Preview montage:** basketball dunk, trading desk, date. 3 mini-sets, hand-animated.
-3. **Teacher Rupert:** outfit, pointing stick, drop-down whiteboard, and board drawings in our own style from his real data.
-4. **Judge scenes:** watching the old runs, card raises (any number), on the sideline in later runs.
-5. **Cinematic 100 m** (EXP-010, step 846M) + the final timelapse.
-6. **Outro wave.**
-7. **Re-renders:** the 8 cheat timelapses and the cheat clips with the running counter (the overnight batch).
+## Shot list: new things to build
+1. The opening: close-up, pull back, smile, wave.
+2. The preview clips: bike, date, trading desk.
+3. The electrocution gag.
+4. Teacher Rupert board moments, incl. the cartoon boat (added after the stock cut).
+5. The judge walking in with a whistle.
+6. The judge at his desk scoring old cheat runs with cards.
+7. The judge on the sideline in the final runs.
+8. The final timelapse (EXP-010).
+9. The cinematic 100 m + the card raise + the Bolt 60 m shot.
+10. The outro wave (+ optional fall or SUBSCRIBE card).
+11. Overlays: score graph, "ticks" comparison, counter.
 
-## Sources checked for this draft
-- Rupert's numbers: `experiments/EXP-003` to `EXP-010`, `rupert/ep01_story.py`, the training logs (`outputs/`), `docs/body-sources.md`.
-- Boat example: [DeepMind, Specification gaming: the flip side of AI ingenuity (2020)](https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/). The original OpenAI post ("Faulty reward functions in the wild", 2016) blocks automated reading.
-- Bolt: [World Athletics report, 16 Aug 2009](https://worldathletics.org/news/news/bolt-again-958-world-record-in-berlin-updat).
+**Already have, needs the overnight re-render with the running counter:** the timelapses before each cheat and the 8 cheat clips.
+
+## Sources
+- Rupert's numbers: `experiments/EXP-003` to `EXP-010`, `rupert/ep01_story.py`, the training logs, `docs/body-sources.md`.
+- Boat: [DeepMind, Specification gaming: the flip side of AI ingenuity (2020)](https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/).
+- Bolt: [World Athletics, 16 Aug 2009](https://worldathletics.org/news/news/bolt-again-958-world-record-in-berlin-updat).
 - Strength: Harbo, Brincks & Andersen (2012), Eur J Appl Physiol 112:267–275.
