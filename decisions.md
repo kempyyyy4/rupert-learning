@@ -16,6 +16,13 @@ Newest first. Each entry: what we decided, and why.
   - Board drawings are in our own style, not screenshots.
   - The judge is mainly an animated character: his score cards don't need to be real scores (so the narration must not call them real). He sits on the sideline in runs after his introduction.
   - The script is a guideline for Tom's own words. Only the facts are fixed. Claude drafts, Tom edits: `episodes/EP01-script.md`.
+- **Script draft 2 calls (Tom).**
+  - Keep the Nvidia CEO joke (Claude advised swapping it).
+  - Say the memory wipes.
+  - Leave the mid-stride practice starts out of the narration. Claude had suggested one line; no line may claim he never saw a running pose.
+  - The judge becomes a coach-style character with the moustache.
+  - The ending gets a race: Rupert's real final run against a world-record runner moving at Bolt's real 2009 split times.
+  - **Open:** the runner's look. Tom asked for a Bolt lookalike. Claude advises against a recognisable likeness of a real person in a monetised video, and recommends a ghost world-record runner or a generic tall sprinter.
 
 ## 2026-11-08
 - **Style judge (AMP) for EP01's ending** (Tom chose B2 over 'copy one runner': better story). Rupert found cheat #8 (skipping gallop, EXP-009), so as agreed we stop adding rules and show him real runners.

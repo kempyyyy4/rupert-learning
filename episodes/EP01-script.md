@@ -99,7 +99,7 @@
 
 **VO:** "This was resolved by more points being awarded for moving forward than for standing up."
 
-**(Claude) An honesty line, once, here:** "And every time I change the rules, I wipe his memory and he starts again from zero." The plan is to say this out loud, because each fix really was a fresh Rupert. The "one last fresh Rupert" line at the end needs it set up.
+**VO (memory wipe, agreed):** "And every time I change the rules, I wipe his memory and he starts again from zero." Each fix really was a fresh Rupert, and this sets up "one last fresh Rupert" at the end.
 
 ### Cheat 2: THE SNIPER'S NIGHTMARE
 **VO:** "His first finish! YAYYYY." (beat) "Wait. But he's shuffling… doing the limbo."
@@ -108,18 +108,30 @@
 
 **FACT (optional):** 100 m in about 19 seconds, with his head about 38 cm behind his hips.
 
-### ⚠ Cheat 3: THE POGO STICK (missing from draft 2)
-- Your script jumps from cheat 2 to the knees-and-forgetting one, but you still say "8 cheats, eight new rules" later.
-- Either put this back or change the count to 7.
+### Cheat 3: THE POGO STICK
+**SHOT [have]:** The timelapse, then a wide shot. He's upright, heading the right way… then the side angle: boing, boing, boing.
 
-**Suggested VO:** "Then he went full pogo stick: stiff legs, boing, boing, boing, with one arm held out like a zombie."
+**VO:** "Cheat number three. And to be fair to him: he's upright, he's moving forward, he's even going the right way…" (beat) "…boing."
 
-**Fix:** a reward for long strides; told off for flailing his arms.
+**VO:** "Rupert has decided knees are optional. Both legs locked dead straight, bouncing down the track on his tiptoes like a pogo stick. And look at that arm: he's holding it out in front of him like he's sleepwalking."
 
-**FACT:** about 22 s per 100 m.
+**VO:** "And here's the worst part: this one was my fault. Remember the 'stand tall' rule I gave him for the limbo? He took it *very* seriously. Locked legs are about as tall as you can get."
 
-**VO:** "Rupert seems to have been replaced by [⚠ see note], because when you think he can cheat no more, he does it again."
-- ⚠ The Nvidia CEO joke names a real person as a cheat, and most viewers won't get the reference. I'd swap it, e.g. "…replaced by my little brother at Monopoly".
+**VO:** "On top of that, I was giving him points for every moment his feet spent in the air. Turns out tiny bounces count."
+
+**VO:** "Seven and a half bounces a second, sixty centimetres each. 100 metres in 22 seconds."
+
+**VO:** "So we started rewarding him for long strides, how far each foot actually travels, and told him off for flailing his arms around."
+
+**FACTS (all checked, EXP-004):**
+- Stiff legs, tiny bouncy toe steps: about 7.5 a second, about 0.6 m each.
+- One arm held out in front.
+- Head at 1.76 m: upright, which is why the 'stand tall' rule loved it.
+- Best 100 m: 21.8 s.
+- Cause: we rewarded air time (time each foot spends off the ground), small bounces earned it, and the 'stand tall' range pushed him to lock his legs.
+- Fix: a stride reward = metres each foot travels per step; an arm penalty for hands far in front of or behind the chest.
+
+**VO:** "Rupert seems to have been replaced by Nvidia's CEO, because when you think he can cheat no more, he does it again." (Tom's call: keep.)
 
 ### Cheat 4: THE MIDDLE-AGED SHUFFLE TO THE BATHROOM (and forgetting everything we've taught him so far)
 **VO:** "This one takes the cake. Not only was he running like a constipated pensioner, overnight he forgot how to run altogether and started falling over again."
@@ -164,9 +176,8 @@
 ## 5. The judge
 
 **SHOT [build]:**
-- Dramatic music. The judge walks in down the track: suit, glasses, moustache, a whistle round his neck.
+- Dramatic music. The judge walks in down the track, restyled as a coach (Tom, 2026-11-12): tracksuit, walrus moustache, glasses, grey tufts, whistle, clipboard.
 - He stops, stares at the camera and blows the whistle.
-- (He's the 'judge' character, now with a whistle. Tell me if you'd rather he became a tracksuit 'coach'.)
 
 **VO:** "So I hired a judge." (beat) "The judge wasn't as lenient as me."
 
@@ -183,8 +194,7 @@
 - Only the basics stayed: move forward, stay up, stay in your lane, don't waste energy. Plus the judge.
 - That's actually the better story. Suggested replacement: "So I deleted all eight rules. All he gets now is points for moving forward, and the judge."
 
-**(Claude) A second honesty line:** "In practice, I sometimes started him mid-stride, like a real runner, to give him the idea."
-- This is true for 3 in 10 practice attempts. Every 100 m you see starts from standing.
+(Tom, 2026-11-12: the mid-stride practice starts are left out of the narration. So don't claim "nobody ever showed him a running pose"; "nobody showed him a *start*" is still true.)
 
 ## 6. The finish
 
@@ -217,14 +227,20 @@
 
 **VO:** "Rupert's final run time was 15.2 seconds. He's no Usain Bolt…"
 
-**(Claude) To make the Bolt line land:**
-- **VO:** "Bolt's world record is 9.58. When Bolt crosses the line, Rupert would still be about here." **SHOT:** Rupert at the 60 m mark, with a ghost finish line far ahead.
+**SHOT [build]: THE RACE (Tom, 2026-11-12).** Rupert's real final run, side by side with a world-record runner in the next lane.
+- The runner moves at Bolt's real Berlin 2009 pace: his position every 10 m follows the published split times, with his real step count (about 41 steps).
+- His body is animated by us (no recording of Bolt exists for us to use).
+- When the runner crosses the line, freeze. Rupert is at about 60 m. (beat)
 - **VO:** "…but honestly, I thought we would never make it here."
+- How the runner looks: **not decided**. Claude recommends a 'ghost' world-record runner (glowing, no face) or a generic tall sprinter, not a Bolt lookalike. See decisions.md.
 
 **FACTS:**
 - 15.2 s, matched in all 8 test runs.
 - Bolt: 9.58 s, Berlin, 16 August 2009.
 - When Bolt finishes, Rupert is about 60 m along. Caveat: our timer has no reaction time, so it's slightly kind to Rupert.
+- Bolt's 10 m splits (cumulative, from the gun, including his 0.146 s reaction): 1.89, 2.88, 3.78, 4.64, 5.47, 6.29, 7.10, 7.92, 8.75, 9.58.
+  - Source: the IAAF Berlin 2009 biomechanics analysis, as quoted on [The Science of Sport](https://scienceofsport.blogspot.com/2009/08/analysis-of-bolts-958-wr.html). I couldn't open the IAAF PDF itself; sources differ by ±0.02 s.
+  - Good enough for animation; don't put the splits on screen as official.
 - 29.4 million attempts in total; about 4 years of Rupert-time.
 
 ## 7. Outro
@@ -245,11 +261,11 @@
 2. The preview clips: bike, date, trading desk.
 3. The electrocution gag.
 4. Teacher Rupert board moments, incl. the cartoon boat (added after the stock cut).
-5. The judge walking in with a whistle.
+5. The judge restyled as a coach (tracksuit, whistle, clipboard), walking in.
 6. The judge at his desk scoring old cheat runs with cards.
 7. The judge on the sideline in the final runs.
 8. The final timelapse (EXP-010).
-9. The cinematic 100 m + the card raise + the Bolt 60 m shot.
+9. The cinematic 100 m + the card raise + **the race** against a world-record runner on Bolt's real splits.
 10. The outro wave (+ optional fall or SUBSCRIBE card).
 11. Overlays: score graph, "ticks" comparison, counter.
 
