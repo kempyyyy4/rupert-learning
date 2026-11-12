@@ -22,7 +22,9 @@ Newest first. Each entry: what we decided, and why.
   - Leave the mid-stride practice starts out of the narration. Claude had suggested one line; no line may claim he never saw a running pose.
   - The judge becomes a coach-style character with the moustache.
   - The ending gets a race: Rupert's real final run against a world-record runner moving at Bolt's real 2009 split times.
-  - **Open:** the runner's look. Tom asked for a Bolt lookalike. Claude advises against a recognisable likeness of a real person in a monetised video, and recommends a ghost world-record runner or a generic tall sprinter.
+  - **The runner's look (Tom decided, after Claude advised against a likeness):** a Bolt lookalike.
+    - A tall Black sprinter in a yellow vest and green shorts, drawn in our cartoon head style. He moves in Bolt's style: tall and upright, with long strides.
+    - To keep it a caricature rather than a copy: no name, logo or sponsor on the kit, and not the trademarked lightning-bolt pose.
 
 ## 2026-11-08
 - **Style judge (AMP) for EP01's ending** (Tom chose B2 over 'copy one runner': better story). Rupert found cheat #8 (skipping gallop, EXP-009), so as agreed we stop adding rules and show him real runners.

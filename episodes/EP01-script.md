@@ -108,20 +108,22 @@
 
 **FACT (optional):** 100 m in about 19 seconds, with his head about 38 cm behind his hips.
 
-### Cheat 3: THE POGO STICK
+### Cheat 3: TIGGER ON A SUGAR RUSH (or THE POGO STICK)
 **SHOT [have]:** The timelapse, then a wide shot. He's upright, heading the right way… then the side angle: boing, boing, boing.
 
-**VO:** "Cheat number three. And to be fair to him: he's upright, he's moving forward, he's even going the right way…" (beat) "…boing."
+**VO:** "Cheat number three."
 
-**VO:** "Rupert has decided knees are optional. Both legs locked dead straight, bouncing down the track on his tiptoes like a pogo stick. And look at that arm: he's holding it out in front of him like he's sleepwalking."
+**VO:** "He's up. He's moving. He's even going the right way." (beat) "Boing."
 
-**VO:** "And here's the worst part: this one was my fault. Remember the 'stand tall' rule I gave him for the limbo? He took it *very* seriously. Locked legs are about as tall as you can get."
+**VO:** "Knees? Never heard of them, mate. Both legs locked dead straight, bouncing down the track on his tiptoes like he's late for a bus."
 
-**VO:** "On top of that, I was giving him points for every moment his feet spent in the air. Turns out tiny bounces count."
+**VO:** "And what is he doing with that arm? He looks like he's sleepwalking to the fridge."
 
-**VO:** "Seven and a half bounces a second, sixty centimetres each. 100 metres in 22 seconds."
+**VO:** "Seven and a half bounces a second. 100 metres in 22 seconds."
 
-**VO:** "So we started rewarding him for long strides, how far each foot actually travels, and told him off for flailing his arms around."
+**VO:** "And honestly, this one's on me. I told him to stand tall, and he's never been taller. I was also paying him for every moment his feet were off the ground, so he barely put them down."
+
+**VO:** "This was fixed by rewarding long strides, how far each foot actually travels, and telling him off for flailing his arms about."
 
 **FACTS (all checked, EXP-004):**
 - Stiff legs, tiny bouncy toe steps: about 7.5 a second, about 0.6 m each.
@@ -232,7 +234,7 @@
 - His body is animated by us (no recording of Bolt exists for us to use).
 - When the runner crosses the line, freeze. Rupert is at about 60 m. (beat)
 - **VO:** "…but honestly, I thought we would never make it here."
-- How the runner looks: **not decided**. Claude recommends a 'ghost' world-record runner (glowing, no face) or a generic tall sprinter, not a Bolt lookalike. See decisions.md.
+- How the runner looks (Tom): a Bolt lookalike. Tall Black sprinter, yellow vest, green shorts, cartoon head style, long upright stride. No name or logo on the kit, and no lightning-bolt pose.
 
 **FACTS:**
 - 15.2 s, matched in all 8 test runs.
