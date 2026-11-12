@@ -59,7 +59,17 @@ Honesty notes for the script:
 - The attempt counter in each run counts that run's attempts. For the whole-story total, add the runs together and call it "total attempts".
 
 
-## Running order (Tom, 2026-11-08)
+## Running order v2 (Tom, 2026-11-12): replaces the 2026-11-08 order below
+Tom's brief: "a cinematic masterpiece". Rewards must be properly explained.
+1. **Cold open.** Zoom out from Rupert standing on the track, timed to "This is Rupert". He falls over: "he's useless".
+2. **Series promise.** A fake 'dream' montage: Rupert dunking a basketball, trading, flirting. Then "but Rupert needs to walk before he can run" (or similar).
+3. **First run plays.**
+4. **How he learns.** Narration over runs and timelapses, with interjections. The main device: **Teacher Rupert** (teacher costume, glasses, pointing stick) at a whiteboard that drops down. He explains rewards, trial and error and so on. Possibly overlays, graphs and studies too (research what).
+5. **The cheats.** Show each cheat, then the fix, with Teacher Rupert where an explanation is needed. Comedy from the commentary and the shots, plus silences for effect.
+6. **The judge.** Introduced like Rupert, and why we need him. Then scenes of the judge watching the real runner and scoring Rupert, holding up score cards at Rupert's bad runs.
+7. **The finish.** Build-up to Rupert running properly. Then future videos, thank the viewer, ask them to subscribe.
+
+## Running order v1 (Tom, 2026-11-08)
 1. **Intro.** Rupert stands at the start line and waves ("This is Rupert"), then a face close-up. Attempt #1: he falls flat on his face. "He's useless." Series promise ("over this series I'll teach him everything from X to Y"). Today: 100 m.
 2. **How he learns.** A few early runs with pop-ups (points, attempts, trial and error).
 3. **For every cheat, a chapter:** training timelapse (swarm + fast-cut montage, counter spinning), then a cinematic breakthrough, then the reveal that he's cheating, then the fix ("we gave him a new reward"), then the next timelapse.

@@ -2,6 +2,15 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-12
+- **EXP-010 is EP01's ending.** The style judge worked: he runs like a person (every gait measure is inside the real joggers' range) in 15.2 s. Use step 846M for the cinematic 100 m. No more training for EP01.
+- **EP01 running order v2 (Tom).**
+  - Cold open: a zoom out on standing Rupert, then the fall.
+  - A fake 'dream' montage (basketball dunk, trading, flirting) as the series promise.
+  - **Teacher Rupert** at a drop-down whiteboard explains the learning.
+  - The cheats with fixes, then the judge scoring Rupert's bad runs with cards, then the real run and the outro.
+  - Full details are in `episodes/EP01-learn-to-run.md`.
+
 ## 2026-11-08
 - **Style judge (AMP) for EP01's ending** (Tom chose B2 over 'copy one runner': better story). Rupert found cheat #8 (skipping gallop, EXP-009), so as agreed we stop adding rules and show him real runners.
   - A second small AI (the judge) learns to tell real runners from Rupert. Rupert earns style points when it can't tell. Method: Adversarial Motion Priors, Peng et al. 2021.
