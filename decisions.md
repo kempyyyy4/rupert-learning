@@ -2,6 +2,20 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-13
+- **Tom's review of Night 1 renders.**
+  - **Timelapses rejected.** The grid of Ruperts and the quick cuts don't read as a timelapse. New style:
+    - one continuous locked-off wide shot (Olympic broadcast angle)
+    - the counter racing
+    - one ghostly Rupert, his real attempts sped up so much they blur into streaks
+    - the sun and shadows sweeping across the stadium
+  - **Swarm (many Ruperts) shots dropped.** For "2,048 Ruperts practise at once": a joke shot of a track with 2,048 lanes, from a wide angle. (Tom thought it was 26; it's 2,048, the real number of parallel attempts.)
+  - **Cheat clips are good.** Add an Olympic-style high wide angle to each.
+  - **Every shot also comes without the on-screen counter**, so Tom can choose. The stadium board stays.
+  - **The judge looks good, but the shirt and tie sit in the wrong place.** Fix them.
+  - **More emphasis on breakthroughs.** Document Rupert's progress through the final (judged) run better.
+  - **More cinematic shots:** Claude to suggest.
+
 ## 2026-11-12
 - **EXP-010 is EP01's ending.** The style judge worked: he runs like a person (every gait measure is inside the real joggers' range) in 15.2 s. Use step 846M for the cinematic 100 m. No more training for EP01.
 - **EP01 running order v2 (Tom).**
