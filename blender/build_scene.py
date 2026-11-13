@@ -283,7 +283,36 @@ def build_cameras(empties):
     t = wide.constraints.new("TRACK_TO")
     t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
     scene.collection.objects.link(wide)
+    # Olympic broadcast angle: high in the opposite stand, long lens, panning to follow him. It drifts
+    # along at 60% of his speed, so it pans the way a real fixed TV camera does.
+    oly = camera("cam_olympic", (-6.0, -30.0, 10.0), 60)
+    oly.constraints[0].influence = 0.6
+    oly.data.dof.aperture_fstop = 4.0
+    # locked-off high wide from behind the start, off to the side: the whole straight in one view,
+    # the start area big in the foreground (for the ghost timelapses)
+    ow = bpy.data.objects.new("cam_olympic_wide", bpy.data.cameras.new("cam_olympic_wide"))
+    ow.data.lens = 22
+    ow.location = (-17.0, -6.0, 6.5)
+    look = bpy.data.objects.new("cam_olympic_wide_target", None)
+    look.location = (32.0, 6.5, 0.5)
+    scene.collection.objects.link(look)
+    t = ow.constraints.new("TRACK_TO")
+    t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
+    scene.collection.objects.link(ow)
     scene.camera = main
+
+
+def timelapse_light(last_frame):
+    """Time passing: the sun rises low on one side, climbs, and sets on the other over the shot."""
+    sun = bpy.data.objects["sun"]
+    keys = [(1, 72, 110, (1.0, 0.78, 0.58), 3.5), ((1 + last_frame) // 2, 32, 25, (1.0, 0.98, 0.95), 5.0),
+            (last_frame, 74, -70, (1.0, 0.72, 0.5), 3.5)]
+    for frame, tilt, turn, rgb, energy in keys:
+        sun.rotation_euler = (math.radians(tilt), 0, math.radians(turn))
+        sun.keyframe_insert("rotation_euler", frame=frame)
+        sun.data.color, sun.data.energy = rgb, energy
+        sun.data.keyframe_insert("color", frame=frame)
+        sun.data.keyframe_insert("energy", frame=frame)
 
 
 def build_swarm_camera():
@@ -338,6 +367,7 @@ def main():
     ap.add_argument("--card", default=None, help="judge: score card text")
     ap.add_argument("--card-from", type=int, default=1, help="judge: frame the card appears")
     ap.add_argument("--swarm", action="store_true", help="build a Rupert for EVERY attempt in the replay file")
+    ap.add_argument("--timelapse", action="store_true", help="ghost timelapse: sun sweep, no motion blur, light sampling")
     ap.add_argument("--camera-cuts", default=None, help="JSON file of [frame, camera name]: switch cameras mid-shot")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:])
     replay, attempt, out, screen_text = args.replay, args.attempt, args.out, args.screen
@@ -391,6 +421,11 @@ def main():
         for frame, cam in json.loads(Path(args.camera_cuts).read_text()):
             scene.timeline_markers.new(f"cut_{frame}", frame=frame).camera = scene.objects[cam]
     render_settings()
+    if args.timelapse:
+        import numpy as np
+        timelapse_light(len(np.load(replay)["xpos"]))
+        bpy.context.scene.render.use_motion_blur = False   # the blur comes from averaging many moments
+        bpy.context.scene.eevee.taa_render_samples = 16
     import numpy as np
     z = np.load(replay)
     if "cuts" in z or "resets" in z:

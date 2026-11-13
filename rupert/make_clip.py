@@ -81,6 +81,10 @@ def main():
         run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-framerate", FPS,
              "-start_number", first, "-i", Path(tmp) / "f_%04d.png", "-i", hud,
              "-filter_complex", "overlay", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", out])
+        clean = out.with_name(out.stem + "_clean" + out.suffix)   # no on-screen counter (stadium board stays)
+        run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-framerate", FPS,
+             "-start_number", first, "-i", Path(tmp) / "f_%04d.png",
+             "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", clean])
     print(f"Saved {out}  (attempt counter: about #{attempt:,}; overlay also saved as {hud.name})")
 
 

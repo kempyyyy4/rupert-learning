@@ -128,16 +128,30 @@ def _blazer(body):
     trousers = H.metaball_mesh("judge_trousers", els, body.coll)
     trousers.data.materials.append(bpy.data.materials["judge_blazer"])
     H.skin_to_skeleton(trousers, legs, body.segs, body.skeleton)
-    # shirt V and tie on the chest front (torso frame: x forward, z up)
+    # shirt V and tie, laid onto the front of the jacket at the collar (torso frame: x forward,
+    # y = his left, z up). Each point is pushed onto the jacket surface so they hug the chest.
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    bm_j = bmesh.new()
+    bm_j.from_mesh(obj.data)
+    bvh = BVHTree.FromBMesh(bm_j)
     torso = body.empties["torso"]
-    x = 0.143
-    for name, pts, rgb, dx in (("shirt", [(0.055, 0.04), (-0.055, 0.04), (0.0, -0.12)], SHIRT, 0.0),
-                               ("tie", [(0.016, 0.03), (-0.016, 0.03), (-0.022, -0.17), (0.0, -0.2), (0.022, -0.17)], TIE, 0.003)):
+    M = body.m("torso")
+    Mi, back = M.inverted(), M.to_3x3() @ Vector((-1, 0, 0))
+    for name, pts, rgb, out in (("shirt", [(0.066, 0.16), (-0.066, 0.16), (0.0, -0.08)], SHIRT, 0.004),
+                                ("tie", [(0.017, 0.155), (-0.017, 0.155), (-0.012, 0.125), (-0.022, -0.045),
+                                         (0.0, -0.068), (0.022, -0.045), (0.012, 0.125)], TIE, 0.007)):
         bm = bmesh.new()
-        vs = [bm.verts.new((x + dx, y, z - 0.09)) for y, z in pts]
+        vs = [bm.verts.new((0.4, y, z)) for y, z in pts]
         bm.faces.new(vs)
-        obj = H.mesh_object(f"judge_{name}", bm, H.material(f"judge_{name}", rgb, rough=0.6), body.coll, smooth=False)
-        obj.parent = torso
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=5, use_grid_fill=True)
+        for v in bm.verts:
+            hit, normal, _, _ = bvh.ray_cast(M @ v.co, back)
+            v.co = Mi @ (hit + normal * out) if hit else Vector((0.14 + out, v.co.y, v.co.z))
+        o = H.mesh_object(f"judge_{name}", bm, H.material(f"judge_{name}", rgb, rough=0.6), body.coll, smooth=True)
+        o.parent = torso
+    bm_j.free()
 
 
 def build_desk(at, coll, label="JUDGE"):
