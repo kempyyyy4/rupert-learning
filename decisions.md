@@ -14,7 +14,23 @@ Newest first. Each entry: what we decided, and why.
   - **Every shot also comes without the on-screen counter**, so Tom can choose. The stadium board stays.
   - **The judge looks good, but the shirt and tie sit in the wrong place.** Fix them.
   - **More emphasis on breakthroughs.** Document Rupert's progress through the final (judged) run better.
-  - **More cinematic shots:** Claude to suggest.
+  - **More cinematic shots: Tom wants all 14 of Claude's list:**
+    1. bullet time
+    2. rail cam
+    3. foot-strike slow-mo
+    4. finish crane
+    5. telephoto head-on
+    6. photo-finish image
+    7. golden hour
+    8. night race
+    9. shallow focus
+    10. judge cutaways
+    11. scoreboard reveal
+    12. Mexican wave
+    13. split screen
+    14. shaky reveal zoom
+  - **Plus a celebration:** close-up shaky-cam shots as Rupert runs off celebrating (crowd and Rupert), and a gold-medal podium with only him on it. Celebration poses are hand animation.
+  - **The judge keeps the suit** (Tom didn't ask for the coach again). Fix his shirt and tie; add a whistle for the walk-in.
 
 ## 2026-11-12
 - **EXP-010 is EP01's ending.** The style judge worked: he runs like a person (every gait measure is inside the real joggers' range) in 15.2 s. Use step 846M for the cinematic 100 m. No more training for EP01.
