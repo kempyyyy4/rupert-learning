@@ -343,12 +343,13 @@ def montage(name, scale=100, pieces=16, seconds=0.6):
 
 
 def ghost(name, scale=100, seconds=10.0, out_fps=25, window=40, sub=10, segments=10,
-          camera="cam_olympic_wide", tag=""):
+          camera="cam_timelapse", tag=""):
     """A proper timelapse: ONE continuous locked-off shot. One Rupert practises exactly like in
     training (randomness on, restarting each time he falls), his brain upgraded through the
     chapter's check-ins. Each finished frame covers `window` physics frames and is the average of
-    `sub` moments in it, like a long-exposure photo: movement smears into ghost trails, still
-    bodies stay solid. The counter races through the chapter's real attempt totals."""
+    `sub` moments in it: the newest moment solid, the older ones fading behind it as a ghost
+    trail (each moment is cut out against an empty-stadium plate rendered at the same instant,
+    so the sun and shadows match). The counter races through the chapter's real attempt totals."""
     from rupert import ep01_story as story
     from PIL import Image
     _, (_, run_name, *_r) = story.chapter(name)
@@ -391,11 +392,20 @@ def ghost(name, scale=100, seconds=10.0, out_fps=25, window=40, sub=10, segments
                     f"s.camera=s.objects['{camera}']")
         run([BLENDER, "-b", blend, "--python-expr", settings, "-o", tmp / "f_#####",
              "-s", 1, "-e", T, "-j", step_sub, "-a"])
+        run([BLENDER, "-b", blend, "--python-expr", settings + "; bpy.data.collections['rupert'].hide_render=True",
+             "-o", tmp / "b_#####", "-s", 1, "-e", T, "-j", window, "-a"])          # empty stadium plates
+        load = lambda f: np.asarray(Image.open(f).convert("RGB"), np.float32) / 255.0
         cache = {}
         for k in range(K):
             frames = [1 + k * window + j * step_sub for j in range(sub)]
-            acc = sum(np.asarray(Image.open(tmp / f"f_{f:05d}.png").convert("RGB"), np.float32) for f in frames)
-            Image.fromarray((acc / sub + 0.5).astype(np.uint8)).save(tmp / f"g_{k:04d}.png")
+            plate = load(tmp / f"b_{1 + k * window:05d}.png")
+            img = plate.copy()
+            for j, f in enumerate(frames):                       # oldest first, newest on top
+                fr = load(tmp / f"f_{f:05d}.png")
+                mask = np.clip((np.abs(fr - plate).max(2, keepdims=True) - 0.03) * 12.0, 0.0, 1.0)
+                a = (0.12 + 0.88 * (j / max(1, sub - 1)) ** 2) * mask
+                img = img * (1 - a) + fr * a
+            Image.fromarray((img * 255 + 0.5).astype(np.uint8)).save(tmp / f"g_{k:04d}.png")
             n = numbers[k]
             if n not in cache:
                 cache[n] = make_hud(tmp / f"hud_n{len(cache)}.png", w, h, n, "ATTEMPTS")

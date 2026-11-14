@@ -182,11 +182,38 @@ def build_stadium(coll, screen_text):
     box("roof", (length, 16, 0.4), (mid_x, back_y - 6, 9.2), material("roof", (0.92, 0.93, 0.95), rough=0.5), coll)
 
     # big screen on the roof, near the finish
+    build_end_stands(coll)
     box("screen", (14, 0.3, 4.2), (FINISH_X - 10, back_y - 1.0, 11.8), material("screen", COL["screen"], rough=0.3), coll, bevel=0.05)
     text("screen_title", "RUPERT  100m", (FINISH_X - 10, back_y - 1.2, 12.8), (90, 0, 0), 1.1,
          material("screen_text", (1.0, 0.85, 0.2), emit=4.0), coll)
     text("screen_sub", screen_text, (FINISH_X - 10, back_y - 1.2, 11.2), (90, 0, 0), 0.9,
          material("screen_text2", (1, 1, 1), emit=4.0), coll)
+
+
+def build_end_stands(coll):
+    """Stands with crowds across both ends of the straight, so long-lens shots down the track
+    end in a packed stadium instead of empty grass."""
+    stand_m, seat_m = bpy.data.materials["stand"], bpy.data.materials["seat"]
+    half = 34.0
+    for name, x_end, turn in (("end_far", TRACK_X[1] + 1.0, -90), ("end_near", TRACK_X[0] - 1.0, 90)):
+        root = bpy.data.objects.new(f"{name}_root", None)
+        root.location = (x_end, 4.0, 0)
+        root.rotation_euler = (0, 0, math.radians(turn))
+        coll.objects.link(root)
+        sub = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(sub)
+        tiers = []
+        for t in range(12):
+            y, z = 1.6 * t, 0.9 + 0.6 * t
+            box(f"{name}_stand_{t}", (2 * half, 1.6, z), (0, y + 0.8, z / 2), stand_m, sub)
+            box(f"{name}_seats_{t}", (2 * half, 0.5, 0.12), (0, y + 1.1, z + 0.06), seat_m, sub)
+            tiers.append((y + 0.75, z))
+        build_crowd(sub, -half, half, tiers)
+        for o in list(sub.objects):
+            o.parent = root
+            sub.objects.unlink(o)
+            coll.objects.link(o)
+        bpy.data.collections.remove(sub)
 
 
 def build_world_and_light():
@@ -299,6 +326,17 @@ def build_cameras(empties):
     t = ow.constraints.new("TRACK_TO")
     t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
     scene.collection.objects.link(ow)
+    # timelapse: locked-off long lens from behind the start, straight down the track. The long lens
+    # squashes distance, so he stays readable from the start line all the way down the straight.
+    tl = bpy.data.objects.new("cam_timelapse", bpy.data.cameras.new("cam_timelapse"))
+    tl.data.lens = 135
+    tl.location = (-60.0, -1.5, 9.5)          # on top of the stand behind the start, like a TV platform
+    look = bpy.data.objects.new("cam_timelapse_target", None)
+    look.location = (50.0, 2.5, 1.1)
+    scene.collection.objects.link(look)
+    t = tl.constraints.new("TRACK_TO")
+    t.target, t.track_axis, t.up_axis = look, "TRACK_NEGATIVE_Z", "UP_Y"
+    scene.collection.objects.link(tl)
     scene.camera = main
 
 
