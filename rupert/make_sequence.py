@@ -342,8 +342,39 @@ def montage(name, scale=100, pieces=16, seconds=0.6):
     render(blend, cams[0], 1, n, OUT / f"tl_{name}_2_montage.mp4", hud=numbers, scale=scale)
 
 
+# Side-on timelapse cameras, made at render time so old scenes can use them too:
+# (x it centres on, distance from Rupert's lane, height, lens mm, pan). Tilted so his lane sits
+# two-thirds of the way down the frame. pan = share of his forward movement the camera follows.
+TL_CAMS = {
+    "side_close": (3.0, 10.0, 2.5, 28, 0.0),     # start line, about 13 m of track
+    "side_mid": (12.0, 28.0, 5.0, 40, 0.0),      # start to 25 m
+    "side_wide": (27.0, 60.0, 12.0, 35, 0.0),    # start to 60 m
+    "side_pan": (4.0, 18.0, 3.0, 50, 0.85),      # follows him down the track
+}
+DRAFT = ("; s.render.resolution_x=640; s.render.resolution_y=360; s.render.resolution_percentage=100; "
+         "s.eevee.taa_render_samples=4; s.eevee.use_raytracing=False")
+
+
+def _cam_expr(name):
+    """Python (for Blender --python-expr, with s = the scene) that makes `name` the camera."""
+    if name not in TL_CAMS:
+        return f"s.camera=s.objects['{name}']"
+    x, d, h, lens, pan = TL_CAMS[name]
+    code = [
+        "import math",
+        f"c=bpy.data.objects.new('tl_cam',bpy.data.cameras.new('tl_cam')); c.data.lens={lens}",
+        f"c.location=({x},{-d},{h}); s.collection.objects.link(c); s.camera=c",
+        f"down=math.atan(({h}-0.6)/{d})-math.atan(0.3*0.5*36*9/16/{lens})",
+        "c.rotation_euler=(math.pi/2-down,0,0)",
+    ]
+    if pan:
+        code += ["k=c.constraints.new('COPY_LOCATION'); k.target=s.objects['rupert_torso']",
+                 f"k.use_y=k.use_z=False; k.use_offset=True; k.influence={pan}"]
+    return "\n".join(code)
+
+
 def ghost(name, scale=100, seconds=10.0, out_fps=25, window=40, sub=10, segments=10,
-          camera="cam_timelapse", tag=""):
+          camera="cam_timelapse", tag="", draft=False, reuse=False):
     """A proper timelapse: ONE continuous locked-off shot. One Rupert practises exactly like in
     training (randomness on, restarting each time he falls), his brain upgraded through the
     chapter's check-ins. Each finished frame covers `window` physics frames and is the average of
@@ -351,7 +382,26 @@ def ghost(name, scale=100, seconds=10.0, out_fps=25, window=40, sub=10, segments
     trail (each moment is cut out against an empty-stadium plate rendered at the same instant,
     so the sun and shadows match). The counter races through the chapter's real attempt totals."""
     from rupert import ep01_story as story
-    from PIL import Image
+    stem = f"tl_{name}{tag}"
+    npz = OUT / f"{stem}_ghost.npz"
+    blend = npz.with_suffix(".blend")
+    if reuse and blend.exists():
+        # same practice footage as last time: skip the physics and the scene build
+        T = len(np.load(npz)["xpos"])
+        K = T // window
+        board = json.loads(npz.with_suffix(".board.json").read_text())
+        numbers, v = {}, board[0][1]
+        for k in range(K):
+            v = max([b for f, b in board if f <= 1 + k * window] or [v])
+            numbers[k] = v
+    else:
+        T, K, numbers = _ghost_physics(story, name, npz, blend, seconds, out_fps, window, segments)
+    cam = "" if camera == "cam_timelapse" else "_" + camera
+    _ghost_render(blend, T, K, numbers, window, sub, camera, scale, out_fps, draft,
+                  OUT / f"{stem}_ghost{cam}{'_draft' if draft else ''}.mp4")
+
+
+def _ghost_physics(story, name, npz, blend, seconds, out_fps, window, segments):
     _, (_, run_name, *_r) = story.chapter(name)
     run_dir = ROOT / "outputs" / run_name
     steps = [st for st in story.eval_steps(name)
@@ -376,33 +426,36 @@ def ghost(name, scale=100, seconds=10.0, out_fps=25, window=40, sub=10, segments
     for i, kf in enumerate(seg_frames):
         for j in range(kf):
             numbers[k] = int(ends[i] + (ends[i + 1] - ends[i]) * j / kf); k += 1
-    stem = f"tl_{name}{tag}"
-    npz = OUT / f"{stem}_ghost.npz"
     np.savez(npz, xpos=xp, xquat=xq, alive=np.ones(rs.shape, bool), resets=rs, body_names=np.array(names),
              fps=np.array(FPS))
-    blend = npz.with_suffix(".blend")
     board = [[1 + k * window, v] for k, v in sorted(numbers.items()) if numbers.get(k - 1) != v]
     build(npz, blend, ends[0], "TRAINING", board_frames=board, extra=["--timelapse"])
+    return T, K, numbers
+
+
+def _ghost_render(blend, T, K, numbers, window, sub, camera, scale, out_fps, draft, out):
+    from PIL import Image
     step_sub = window // sub
-    w, h = 1920 * scale // 100, 1080 * scale // 100
-    out = OUT / f"{stem}_ghost.mp4"
+    moving = TL_CAMS.get(camera, (0,) * 5)[4] > 0      # a panning camera needs a plate per moment
+    w, h = (640, 360) if draft else (1920 * scale // 100, 1080 * scale // 100)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        settings = (f"import bpy; s=bpy.context.scene; s.render.resolution_percentage={scale}; "
-                    f"s.camera=s.objects['{camera}']")
+        settings = (f"import bpy; s=bpy.context.scene; s.render.resolution_percentage={scale}"
+                    + (DRAFT if draft else "") + "\n" + _cam_expr(camera))
         run([BLENDER, "-b", blend, "--python-expr", settings, "-o", tmp / "f_#####",
              "-s", 1, "-e", T, "-j", step_sub, "-a"])
-        run([BLENDER, "-b", blend, "--python-expr", settings + "; bpy.data.collections['rupert'].hide_render=True",
-             "-o", tmp / "b_#####", "-s", 1, "-e", T, "-j", window, "-a"])          # empty stadium plates
+        run([BLENDER, "-b", blend, "--python-expr", settings + "\nbpy.data.collections['rupert'].hide_render=True",
+             "-o", tmp / "b_#####", "-s", 1, "-e", T, "-j", step_sub if moving else window, "-a"])  # empty stadium
         load = lambda f: np.asarray(Image.open(f).convert("RGB"), np.float32) / 255.0
         cache = {}
         for k in range(K):
             frames = [1 + k * window + j * step_sub for j in range(sub)]
-            plate = load(tmp / f"b_{1 + k * window:05d}.png")
+            plate = load(tmp / f"b_{(frames[-1] if moving else frames[0]):05d}.png")
             img = plate.copy()
             for j, f in enumerate(frames):                       # oldest first, newest on top
                 fr = load(tmp / f"f_{f:05d}.png")
-                mask = np.clip((np.abs(fr - plate).max(2, keepdims=True) - 0.03) * 12.0, 0.0, 1.0)
+                own = load(tmp / f"b_{f:05d}.png") if moving else plate
+                mask = np.clip((np.abs(fr - own).max(2, keepdims=True) - 0.03) * 12.0, 0.0, 1.0)
                 a = (0.12 + 0.88 * (j / max(1, sub - 1)) ** 2) * mask
                 img = img * (1 - a) + fr * a
             Image.fromarray((img * 255 + 0.5).astype(np.uint8)).save(tmp / f"g_{k:04d}.png")
@@ -424,13 +477,19 @@ def main():
     ap.add_argument("--chapter", default="cheat1_stands_still", help="for swarm/montage: see rupert/ep01_story.py")
     ap.add_argument("--scale", type=int, default=100, help="resolution percent of 1920x1080 (25 = quick test)")
     ap.add_argument("--out-dir", default=None, help="folder for the clips (default renders/ep01_shots)")
+    ap.add_argument("--camera", default="cam_timelapse",
+                    help="ghost: camera(s), comma separated, e.g. " + ",".join(TL_CAMS))
+    ap.add_argument("--draft", action="store_true", help="ghost: quick 640x360 test version (minutes, not hours)")
+    ap.add_argument("--reuse", action="store_true", help="ghost: reuse the last practice footage (skip the physics)")
     a = ap.parse_args()
     global OUT
     if a.out_dir:
         OUT = Path(a.out_dir)
     OUT.mkdir(parents=True, exist_ok=True)
     if a.shot == "ghost":
-        ghost(a.chapter, a.scale, seconds=a.seconds)
+        for cam in a.camera.split(","):
+            ghost(a.chapter, a.scale, seconds=a.seconds, camera=cam, draft=a.draft, reuse=a.reuse)
+            a.reuse = True                                  # later cameras reuse the same footage
     elif a.shot in ("swarm", "montage"):
         {"swarm": swarm, "montage": montage}[a.shot](a.chapter, a.scale)
     else:

@@ -2,6 +2,11 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-14
+- **Timelapse from behind the start is out; side-on instead** (Tom: "side on one would be better either wide shot or closer up"). Four side-on test cameras made (`side_close`, `side_mid`, `side_wide`, `side_pan`, in `rupert/make_sequence.py`); Tom picks from quick test clips.
+- **Quick test clips (`--draft`) before any long render.** Tom asked for fast rough versions to judge shots before committing hours. Stick figures were considered and rejected: they can't show the camera angle, the stadium or the light, which is what Tom is judging. Instead the real scene renders small (640x360) at low quality: about 0.15 s a frame against several seconds, and it looks nearly the same. `--reuse` skips the physics when only the camera changes.
+- **Judge shot and Olympic angle approved.** Weekend batch (`render_weekend.bat`, about 9 h): the Olympic angle for all 8 cheats, the two judge shots at full size, and the 24 Night 1 cheat clips again so each has a no-counter version.
+
 ## 2026-11-13
 - **Tom's review of Night 1 renders.**
   - **Timelapses rejected.** The grid of Ruperts and the quick cuts don't read as a timelapse. New style:
