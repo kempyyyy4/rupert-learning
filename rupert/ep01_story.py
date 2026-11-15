@@ -23,6 +23,7 @@ CHAPTERS = [
     ("cheat6_trex", "rupert_20261107_1323", 0, 875888640, None),
     ("cheat7_limp", "rupert_20261107_2130", 0, 757923840, None),
     ("cheat8_gallop", "rupert_20261108_0008", 0, 698941440, None),
+    ("final_run", "rupert_20261112_1312", 0, 846397440, None),   # EXP-010: the style judge
 ]
 
 
@@ -62,4 +63,4 @@ if __name__ == "__main__":
     for name, run, s0, cheat, _ in CHAPTERS:
         print(f"{name:22s} {run:22s} counter {counter(name, s0):>11,} -> {counter(name, cheat):>11,}"
               f"  replays: {len(eval_steps(name))}")
-    print(f"Grand total after all eight: {offset(len(CHAPTERS)):,}")
+    print(f"Grand total (all chapters): {offset(len(CHAPTERS)):,}")

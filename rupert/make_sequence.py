@@ -438,7 +438,7 @@ def _ghost_render(blend, T, K, numbers, window, sub, camera, scale, out_fps, dra
     step_sub = window // sub
     moving = TL_CAMS.get(camera, (0,) * 5)[4] > 0      # a panning camera needs a plate per moment
     w, h = (640, 360) if draft else (1920 * scale // 100, 1080 * scale // 100)
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(dir=out.parent) as tmp:     # beside the clip: full-size frames are big
         tmp = Path(tmp)
         settings = (f"import bpy; s=bpy.context.scene; s.render.resolution_percentage={scale}"
                     + (DRAFT if draft else "") + "\n" + _cam_expr(camera))
