@@ -39,16 +39,17 @@ def attempt(run_dir, step, i=0, after_fall=1.0, max_s=None):
     return z["xpos"][:n, i], z["xquat"][:n, i], [str(b) for b in z["body_names"]]
 
 
-def first_attempt_full_fall(run_dir, seconds=2.2):
-    """Attempt #1 (the untrained brain), but the physics keeps going after the attempt ends,
-    so he finishes falling instead of freezing on his knees like the test replays do."""
+def first_attempt_full_fall(run_dir, seconds=2.2, step=0, seed=0):
+    """A test attempt (deterministic brain, like the test runs) with the physics carrying on after
+    the attempt ends, so he finishes falling instead of freezing mid-fall like the test replays do.
+    Default: attempt #1, the untrained brain."""
     import pickle
     import jax
     from rupert import env as rupert_env, networks
     env = rupert_env.load_for_run(run_dir, "Rupert100m", {"episode_length": 1000})
-    brain = pickle.load(open(Path(run_dir) / "checkpoints" / f"step_{0:013d}.pkl", "rb"))
+    brain = pickle.load(open(Path(run_dir) / "checkpoints" / f"step_{step:013d}.pkl", "rb"))
     policy = networks.make_policy_fn(env, run_dir)(brain, deterministic=True)
-    key = jax.random.PRNGKey(0)
+    key = jax.random.PRNGKey(seed)
     step, act = jax.jit(env.step), jax.jit(lambda o: policy(o, key)[0])
     s = jax.jit(env.reset)(key)
     xp, xq = [np.asarray(s.data.xpos)], [np.asarray(s.data.xquat)]
@@ -65,9 +66,10 @@ LANE_W = 1.22
 _PRACTICE = {}
 
 
-def _practice_fn(run_dir, n, frames, episode_length):
-    """Compiled once per (run, size, length); the brain is passed in, so check-ins reuse it."""
-    key = (str(run_dir), n, frames, episode_length)
+def _practice_fn(run_dir, n, frames, episode_length, linger=0):
+    """Compiled once per (run, size, length); the brain is passed in, so check-ins reuse it.
+    linger: frames the physics keeps going after an attempt ends (so a fall lands) before the reset."""
+    key = (str(run_dir), n, frames, episode_length, linger)
     if key in _PRACTICE:
         return _PRACTICE[key]
     import jax
@@ -88,16 +90,21 @@ def _practice_fn(run_dir, n, frames, episode_length):
         state = jax.vmap(env.reset)(jax.random.split(k0, n))
 
         def one(carry, _):
-            state, key = carry
+            state, timer, key = carry
             key, ka, kr = jax.random.split(key, 3)
             act, _ = jax.vmap(policy)(state.obs, jax.random.split(ka, n))
             nxt = jax.vmap(env.step)(state, act)
-            done = nxt.done > 0
+            ended = (nxt.done > 0) & (timer == 0)          # the attempt just ended
+            timer = jp.where(ended, linger + 1, timer)     # ... let him finish falling first
+            timer = jp.maximum(timer - 1, 0)
+            done = ended & (linger == 0) | (timer == 1)
+            nxt = nxt.replace(done=jp.zeros_like(nxt.done))  # no early stop while he lands
             fresh = jax.vmap(env.reset)(jax.random.split(kr, n))
             frame = dict(xpos=nxt.data.xpos, xquat=nxt.data.xquat, reset=done)
-            return (jax.tree.map(lambda a, b: pick(done, a, b), fresh, nxt), key), frame
+            timer = jp.where(done, 0, timer)
+            return (jax.tree.map(lambda a, b: pick(done, a, b), fresh, nxt), timer, key), frame
 
-        _, out = jax.lax.scan(one, (state, key), None, length=frames)
+        _, out = jax.lax.scan(one, (state, jp.zeros(n, jp.int32), key), None, length=frames)
         return out
 
     names = [env.mj_model.body(i).name for i in range(env.mj_model.nbody)]
@@ -105,14 +112,14 @@ def _practice_fn(run_dir, n, frames, episode_length):
     return _PRACTICE[key]
 
 
-def practice(run_dir, step, n=24, seconds=4.0, seed=0, episode_length=100000):
+def practice(run_dir, step, n=24, seconds=4.0, seed=0, episode_length=100000, linger=0):
     """Practice attempts exactly like training: n Ruperts at once with the brain from this check-in,
     using his practice behaviour (trial-and-error randomness on), and each one restarts at the start
     line the moment his attempt ends. Returns xpos, xquat (frames, n, bodies, ...), resets
     (frames, n: True on the last frame of an attempt), body names, and how many attempts ended."""
     import pickle
     import jax
-    go, names = _practice_fn(run_dir, n, int(seconds * FPS), episode_length)
+    go, names = _practice_fn(run_dir, n, int(seconds * FPS), episode_length, linger)
     brain = pickle.load(open(Path(run_dir) / "checkpoints" / f"step_{step:013d}.pkl", "rb"))
     f = jax.device_get(go((brain[0], brain[1]), jax.random.PRNGKey(seed)))
     return np.asarray(f["xpos"]), np.asarray(f["xquat"]), np.asarray(f["reset"]), names, int(f["reset"].sum())
@@ -206,6 +213,30 @@ def intro(scale):
     render(blend, "cam_three_quarter", hold - 50, n, OUT / "intro_2_first_attempt_collapse.mp4", hud=1, scale=scale)
     render(blend, "cam_side", hold - 5, min(n, fall + 30), OUT / "intro_3_collapse_slowmo_4x.mp4", hud=1,
            slowmo=4, scale=scale)
+
+
+def forgot(scale):
+    """EXP-010 at 463M, the check-in where he briefly forgot how to run: a test attempt played out
+    until he is flat on the track (the test replay freezes mid-fall), from the side and Olympic angles."""
+    from rupert import ep01_story as story
+    run_dir, step = ROOT / "outputs" / "rupert_20261112_1312", 463011840
+    best = None
+    for seed in range(6):              # the attempt that gets furthest before going down: the biggest fall
+        xp, xq, names = first_attempt_full_fall(run_dir, seconds=8.0, step=step, seed=seed)
+        head = xp[:, names.index("head"), 2]
+        down = int(np.argmax(head < 0.5)) if (head < 0.5).any() else None
+        if down and (best is None or down > best[0]):
+            best = (down, xp, xq, names)
+    down, xp, xq, names = best
+    n = min(len(xp), down + int(1.8 * FPS))           # cut 1.8 s after his head hits the deck
+    still = (np.repeat(xp[:1], 25, 0), np.repeat(xq[:1], 25, 0))
+    npz = OUT / "forgot_463M.npz"
+    save_sequence(npz, [still, (xp[:n], xq[:n])], names)
+    blend = OUT / "forgot_463M.blend"
+    count = story.counter("final_run", step)
+    build(npz, blend, count, f"ATTEMPT {count:,}")
+    for cam, tag in (("cam_side", "side"), ("cam_olympic", "olympic"), ("cam_three_quarter", "three_quarter")):
+        render(blend, cam, 1, 25 + n, OUT / f"bt5_463M_forgot_full_fall_{tag}.mp4", hud=count, scale=scale)
 
 
 def timelapse(scale):
@@ -415,7 +446,8 @@ def _ghost_physics(story, name, npz, blend, seconds, out_fps, window, segments):
     xs, qs, rs, names = [], [], [], None
     for i, (st, kf) in enumerate(zip(picks, seg_frames)):
         xp, xq, r, names, ended = practice(run_dir, st, n=1, seconds=kf * window / FPS, seed=i,
-                                           episode_length=1000)   # 20 s, as in training
+                                           episode_length=1000,   # 20 s, as in training
+                                           linger=int(1.2 * FPS))  # he lands before the restart
         r = r.copy(); r[-1, :] = True                    # a new brain: he restarts at the line
         xs.append(xp); qs.append(xq); rs.append(r)
         print(f"  check-in {st:,}: {ended} attempts in {kf} frames", flush=True)
@@ -473,7 +505,7 @@ def _ghost_render(blend, T, K, numbers, window, sub, camera, scale, out_fps, dra
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("shot", choices=["intro", "timelapse", "judge", "swarm", "montage", "ghost"])
+    ap.add_argument("shot", choices=["intro", "timelapse", "judge", "swarm", "montage", "ghost", "forgot"])
     ap.add_argument("--seconds", type=float, default=10.0, help="ghost: length of the shot")
     ap.add_argument("--chapter", default="cheat1_stands_still", help="for swarm/montage: see rupert/ep01_story.py")
     ap.add_argument("--scale", type=int, default=100, help="resolution percent of 1920x1080 (25 = quick test)")
@@ -494,7 +526,7 @@ def main():
     elif a.shot in ("swarm", "montage"):
         {"swarm": swarm, "montage": montage}[a.shot](a.chapter, a.scale)
     else:
-        {"intro": intro, "timelapse": timelapse, "judge": judge}[a.shot](a.scale)
+        {"intro": intro, "timelapse": timelapse, "judge": judge, "forgot": forgot}[a.shot](a.scale)
 
 
 if __name__ == "__main__":
