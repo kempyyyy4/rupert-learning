@@ -163,13 +163,14 @@ def build(npz, blend, board, screen, costume="ep01_70s", face_frames=0, board_fr
     run(cmd)
 
 
-def render(blend, camera, first, last, out, hud=None, label="ATTEMPTS", slowmo=1, scale=100):
-    """hud: None (no counter), a number, or {frame: number} for a changing counter."""
-    w, h = 1920 * scale // 100, 1080 * scale // 100
+def render(blend, camera, first, last, out, hud=None, label="ATTEMPTS", slowmo=1, scale=100, draft=False):
+    """hud: None (no counter), a number, or {frame: number} for a changing counter.
+    draft: quick 640x360 low-quality test version."""
+    w, h = (640, 360) if draft else (1920 * scale // 100, 1080 * scale // 100)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         settings = (f"import bpy; s=bpy.context.scene; s.render.resolution_percentage={scale}; "
-                    f"s.camera=s.objects['{camera}']")
+                    f"s.camera=s.objects['{camera}']" + (DRAFT if draft else ""))
         if slowmo > 1:   # stretch time: Blender fills in the in-between poses
             settings += f"; s.render.frame_map_old=1; s.render.frame_map_new={slowmo}; s.frame_end={last * slowmo}"
         f0, f1 = first * slowmo, last * slowmo
@@ -237,6 +238,85 @@ def forgot(scale):
     build(npz, blend, count, f"ATTEMPT {count:,}")
     for cam, tag in (("cam_side", "side"), ("cam_olympic", "olympic"), ("cam_three_quarter", "three_quarter")):
         render(blend, cam, 1, 25 + n, OUT / f"bt5_463M_forgot_full_fall_{tag}.mp4", hud=count, scale=scale)
+
+
+def _blend_poses(a, b, frames):
+    """Ease from pose a (xpos, xquat) to pose b over `frames` frames."""
+    (pa, qa), (pb, qb) = a, b
+    qb = np.where((qa * qb).sum(-1, keepdims=True) < 0, -qb, qb)
+    xs, qs = [], []
+    for i in range(1, frames + 1):
+        t = i / (frames + 1)
+        t = t * t * (3 - 2 * t)
+        xs.append(pa + t * (pb - pa))
+        q = qa + t * (qb - qa)
+        qs.append(q / np.linalg.norm(q, axis=-1, keepdims=True))
+    return np.array(xs), np.array(qs)
+
+
+def opening(scale, draft=False):
+    """Cold open, one continuous shot: tight on his face, pull back to the wide stadium while he
+    waves at us ("This is Rupert"), then attempt #1 for real: the untrained brain, and he collapses."""
+    from rupert import poses
+    xw, qw, names = poses.opening()                          # 5.5 s: stand, wave
+    xf, qf, names_f = first_attempt_full_fall(EXP009, seconds=3.4)
+    assert names == names_f
+    xb, qb = _blend_poses((xw[-1], qw[-1]), (xf[0], qf[0]), 20)
+    hold = int(1.2 * FPS)
+    xp = np.concatenate([xw, xb, xf, np.repeat(xf[-1:], hold, 0)])
+    xq = np.concatenate([qw, qb, qf, np.repeat(qf[-1:], hold, 0)])
+    npz = OUT / "opening.npz"
+    np.savez(npz, xpos=xp[:, None], xquat=xq[:, None], alive=np.ones((len(xp), 1), bool),
+             body_names=np.array(names), fps=np.array(FPS))
+    hx, hy, hz = (float(v) for v in xw[0, names.index("head")])
+    off = lambda dx, dy, dz: [hx + dx, hy + dy, hz + dz]
+    push, wide = int(1.4 * FPS), int(4.4 * FPS)
+    cam = {"name": "cam_opening", "fstop": 2.8, "keys": [
+        [1, off(1.95, -0.45, 0.12), off(0, 0, 0.13), 85],          # in front of him: face to camera
+        [push, off(1.85, -0.43, 0.12), off(0, 0, 0.13), 85],       # a slow creep while we hold on the face
+        [wide, off(7.6, -2.3, 0.2), off(0.4, 0, -0.6), 32],        # wide: him, the track and the stadium
+        [len(xp), off(7.8, -2.36, 0.2), off(0.4, 0, -0.6), 32]]}
+    props = OUT / "opening.props.json"
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_opening"}))
+    blend = OUT / "opening.blend"
+    build(npz, blend, 1, "RUPERT", extra=["--props", props])
+    tag = "_draft" if draft else ""
+    render(blend, "cam_opening", 1, len(xp), OUT / f"opening_this_is_rupert{tag}.mp4", hud=1, scale=scale, draft=draft)
+
+
+def teacher(scale, draft=False, board="points"):
+    """Teacher Rupert: a whiteboard drops out of the sky beside him (lands with a bounce), and he
+    taps the drawings with his pointer stick. Board drawings: rupert/board_art.py."""
+    from rupert import board_art, poses
+    X0 = 20.0                                                 # on the track, 20 m from the start
+    W, H, centre = 2.2, 1.4, (X0 - 1.55, 0.5, 1.5)
+    img = OUT / f"board_{board}.png"
+    anchors = board_art.draw(board, img)
+    x0, ztop, y_face = centre[0] - W / 2, centre[2] + H / 2, centre[1] - 0.03
+    tips = {k: (x0 + u * W, y_face, ztop - v * H) for k, (u, v) in anchors.items()}
+    names_order = list(tips)
+    secs = 7.0
+    points = [(2.0, 3.4, tips[names_order[0]]), (3.9, 5.4, tips[names_order[1]])]
+    xp, xq, names = poses.teacher(at=(X0, 0.0), yaw_deg=-100.0, seconds=secs, points=points)
+    for (t0, t1, tip) in points:
+        f = int((t0 + t1) / 2 * FPS)
+        err = np.linalg.norm(poses.stick_tip(xp, names, f) - np.array(tip))
+        print(f"  stick tip {err * 100:.1f} cm from its target", flush=True)
+    npz = OUT / f"teacher_{board}.npz"
+    np.savez(npz, xpos=xp[:, None], xquat=xq[:, None], alive=np.ones((len(xp), 1), bool),
+             body_names=np.array(names), fps=np.array(FPS))
+    n = len(xp)
+    cam = {"name": "cam_teacher", "fstop": 5.6, "keys": [
+        [1, [X0 - 1.2, -4.1, 1.5], [X0 - 1.2, 0.2, 1.42], 35],
+        [n, [X0 - 1.2, -3.7, 1.5], [X0 - 1.2, 0.2, 1.42], 35]]}
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_teacher", "pointer": True,
+                                 "whiteboard": {"image": str(img.resolve()), "centre": centre, "size": [W, H],
+                                                "land": int(0.9 * FPS)}}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "LESSON 1", costume="teacher", extra=["--props", props])
+    tag = "_draft" if draft else ""
+    render(blend, "cam_teacher", 1, n, OUT / f"teacher_{board}{tag}.mp4", scale=scale, draft=draft)
 
 
 def timelapse(scale):
@@ -505,7 +585,8 @@ def _ghost_render(blend, T, K, numbers, window, sub, camera, scale, out_fps, dra
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("shot", choices=["intro", "timelapse", "judge", "swarm", "montage", "ghost", "forgot"])
+    ap.add_argument("shot", choices=["intro", "timelapse", "judge", "swarm", "montage", "ghost", "forgot",
+                                     "opening", "teacher"])
     ap.add_argument("--seconds", type=float, default=10.0, help="ghost: length of the shot")
     ap.add_argument("--chapter", default="cheat1_stands_still", help="for swarm/montage: see rupert/ep01_story.py")
     ap.add_argument("--scale", type=int, default=100, help="resolution percent of 1920x1080 (25 = quick test)")
@@ -525,6 +606,8 @@ def main():
             a.reuse = True                                  # later cameras reuse the same footage
     elif a.shot in ("swarm", "montage"):
         {"swarm": swarm, "montage": montage}[a.shot](a.chapter, a.scale)
+    elif a.shot in ("opening", "teacher"):
+        {"opening": opening, "teacher": teacher}[a.shot](a.scale, draft=a.draft)
     else:
         {"intro": intro, "timelapse": timelapse, "judge": judge, "forgot": forgot}[a.shot](a.scale)
 

@@ -261,7 +261,70 @@ def classic(body):
     running_shoes(body, ORANGE, WHITE, ORANGE)
 
 
+ARMS = ["right_upper_arm", "right_lower_arm", "left_upper_arm", "left_lower_arm"]
+LEGS = ["pelvis", "right_thigh", "right_shin", "left_thigh", "left_shin"]
+
+
+def garment(body, name, rgb, bones, pad, extra=(), rough=0.7, sheen=0.3):
+    """Clothes that follow the skin of these body parts, `pad` metres out, glued to the skeleton."""
+    els = list(extra) + [(k, m, r + pad, h) for _, b, k, m, r, h in body.pieces if b in bones]
+    obj = H.metaball_mesh(f"rupert_{name}", els, body.coll)
+    obj.data.materials.append(H.material(name, rgb, rough=rough, sheen=sheen))
+    H.skin_to_skeleton(obj, bones, body.segs, body.skeleton)
+    return obj
+
+
+def tie_on(body, over, rgb, name="tie", top=0.155, bottom=-0.068, out=0.006):
+    """A tie laid onto the front of a top (`over`): each point pushed onto its surface."""
+    from mathutils.bvhtree import BVHTree
+    bm_o = bmesh.new()
+    bm_o.from_mesh(over.data)
+    bvh = BVHTree.FromBMesh(bm_o)
+    M = body.m("torso")
+    Mi, back = M.inverted(), M.to_3x3() @ Vector((-1, 0, 0))
+    pts = [(0.017, top), (-0.017, top), (-0.012, top - 0.03), (-0.022, bottom + 0.023),
+           (0.0, bottom), (0.022, bottom + 0.023), (0.012, top - 0.03)]
+    bm = bmesh.new()
+    vs = [bm.verts.new((0.4, y, z)) for y, z in pts]
+    bm.faces.new(vs)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=5, use_grid_fill=True)
+    for v in bm.verts:
+        hit, normal, _, _ = bvh.ray_cast(M @ v.co, back)
+        v.co = Mi @ (hit + normal * out) if hit else Vector((0.14 + out, v.co.y, v.co.z))
+    o = H.mesh_object(f"rupert_{name}", bm, H.material(name, rgb, rough=0.6), body.coll, smooth=True)
+    o.parent = body.empties["torso"]
+    bm_o.free()
+    return o
+
+
+def glasses(body, name="glasses", rgb=(0.02, 0.02, 0.02), w=0.031, h=0.022, t=0.006):
+    import rupert_model as R
+    frame = H.material(name, rgb, rough=0.4)
+    for side in (1, -1):
+        for part, (u0, v0, u1, v1) in {"top": (-w, h, w, h), "bottom": (-w, -h, w, -h),
+                                       "in": (-w, -h, -w, h), "out": (w, -h, w, h)}.items():
+            R.face_decal(body, f"{name}_{part}_{side}", R.bar(u0, v0, u1, v1, t), 2, 25 * side, frame, out=0.007)
+    R.face_decal(body, f"{name}_bridge", R.bar(-0.012, 0.004, 0.012, 0.004, t), 2, 0, frame, out=0.009)
+
+
+def teacher(body):
+    """Teacher Rupert (EP01's explainer): light-blue shirt, maroon tie, brown cords, brown shoes,
+    glasses. Same head and hair, so he's still obviously Rupert."""
+    lw = body.shape("lower_waist")
+    top = [("capsule", body.chest_m(), 0.124, 0.1),
+           ("capsule", body.shape_m("torso"), 0.08, body.shape("torso")["half_length"] * 0.8),   # across the shoulders
+           ("capsule", body.shape_m("lower_waist"), 0.098, lw["half_length"])]
+    shirt = garment(body, "teacher_shirt", (0.56, 0.71, 0.9), ["torso", "lower_waist", *ARMS], 0.011, top,
+                    rough=0.75, sheen=0.2)
+    garment(body, "teacher_cords", (0.36, 0.22, 0.11), LEGS, 0.012, rough=0.9, sheen=0.6)
+    tie_on(body, shirt, (0.42, 0.04, 0.07), name="teacher_tie")
+    glasses(body, "teacher_glasses")
+    running_shoes(body, (0.2, 0.11, 0.05), (0.08, 0.05, 0.03), (0.2, 0.11, 0.05), name="teacher_shoe")
+
+
 COSTUMES = {
     "ep01_70s": {"build": ep01_70s, "expression": "happy"},
     "classic": {"build": classic, "expression": "happy"},
+    "teacher": {"build": teacher, "expression": "happy"},
 }

@@ -407,6 +407,7 @@ def main():
     ap.add_argument("--swarm", action="store_true", help="build a Rupert for EVERY attempt in the replay file")
     ap.add_argument("--timelapse", action="store_true", help="ghost timelapse: sun sweep, no motion blur, light sampling")
     ap.add_argument("--camera-cuts", default=None, help="JSON file of [frame, camera name]: switch cameras mid-shot")
+    ap.add_argument("--props", default=None, help="JSON file: keyframed cameras, whiteboard, pointer (props.py)")
     args = ap.parse_args(sys.argv[sys.argv.index("--") + 1:])
     replay, attempt, out, screen_text = args.replay, args.attempt, args.out, args.screen
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -453,6 +454,10 @@ def main():
         build_face_camera(empties, args.face_frames, args.face_shot)
     if args.swarm:
         build_swarm_camera()
+    if args.props:
+        import json
+        import props
+        props.build(json.loads(Path(args.props).read_text()), empties, rupert)
     if args.camera_cuts:
         import json
         scene = bpy.context.scene

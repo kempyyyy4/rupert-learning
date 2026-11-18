@@ -65,14 +65,22 @@ ARM_DOWN = {"right": ((0.02, -0.23, -0.29), (0.07, -0.24, -0.65)),
 WAVE_UP = ((0.06, -0.52, 0.0), (0.12, -0.50, 0.36))   # right elbow out to the side, hand up above his head
 
 
-def wave(seconds=4.0, waves=4):
-    """Rupert standing, raising his right hand and waving (hand swings side to side), then lowering it."""
-    m = model()
-    d = mujoco.MjData(m)
-    q0 = m.qpos0.copy()
-    q0[2] = 1.50
+def standing(m, d, x=0.0, y=0.0, yaw_deg=0.0):
+    """Standing still, arms by his sides, at (x, y) facing yaw_deg (0 = down the track, +x)."""
+    q = m.qpos0.copy()
+    q[0], q[1], q[2] = x, y, 1.50
+    a = np.radians(yaw_deg) / 2
+    q[3:7] = (np.cos(a), 0.0, 0.0, np.sin(a))
     for side in ("right", "left"):
-        q0 = _solve_arm(m, d, q0, side, *ARM_DOWN[side])
+        q = _solve_arm(m, d, q, side, *ARM_DOWN[side])
+    return q
+
+
+WAVE_BIG = ((0.10, -0.40, 0.12), (0.22, -0.38, 0.50))   # hand high above his head: a big hello
+
+
+def wave_qs(m, d, q0, seconds=4.0, waves=4, up_pose=WAVE_UP):
+    """Joint angles per frame: raising his right hand, waving (side to side), lowering it."""
     n = int(seconds * FPS)
     up, down = 0.6, seconds - 0.6
     qs, q = [], q0.copy()
@@ -80,13 +88,121 @@ def wave(seconds=4.0, waves=4):
         t = i / FPS
         lift = _ease(t / up) * (1 - _ease((t - down) / 0.6))
         swing = np.sin(2 * np.pi * waves * (t - up) / (down - up)) if up < t < down else 0.0
-        (e0, h0), (e1, h1) = ARM_DOWN["right"], WAVE_UP
+        (e0, h0), (e1, h1) = ARM_DOWN["right"], up_pose
         elbow = np.array(e0) + lift * (np.array(e1) - np.array(e0))
         hand = np.array(h0) + lift * (np.array(h1) - np.array(h0)) + lift * np.array([0.0, 0.13 * swing, -0.03 * abs(swing)])
         q = _solve_arm(m, d, q.copy(), "right", elbow, hand)
-        q[2] = 1.50 + 0.004 * np.sin(2 * np.pi * t / 1.6)   # tiny breathing bob
+        q[2] = q0[2] + 0.004 * np.sin(2 * np.pi * t / 1.6)   # tiny breathing bob
         qs.append(q.copy())
+    return qs
+
+
+def wave(seconds=4.0, waves=4):
+    """Rupert standing, raising his right hand and waving (hand swings side to side), then lowering it."""
+    m = model()
+    d = mujoco.MjData(m)
+    return kinematics(m, wave_qs(m, d, standing(m, d), seconds, waves))
+
+
+def opening(hold=1.9, wave_s=3.4, after=0.2):
+    """Cold open: standing on the start line (the camera is on his face), then a big wave."""
+    m = model()
+    d = mujoco.MjData(m)
+    q0 = standing(m, d)
+    qs = [q0.copy() for _ in range(int(hold * FPS))]
+    for i, q in enumerate(qs):
+        q[2] = q0[2] + 0.004 * np.sin(2 * np.pi * (i / FPS) / 1.6)
+    qs += wave_qs(m, d, q0, wave_s, waves=3, up_pose=WAVE_BIG)
+    qs += [qs[-1].copy() for _ in range(int(after * FPS))]
     return kinematics(m, qs)
+
+
+# ---- Teacher Rupert: pointing at a whiteboard with a stick --------------------------------
+STICK = 0.75     # pointer stick length beyond the wrist (blender/props.py uses the same)
+
+
+def _frame(m, d, q, body):
+    d.qpos[:] = q
+    mujoco.mj_kinematics(m, d)
+    return d.xmat[m.body(body).id].reshape(3, 3).copy(), d.xpos[m.body(body).id].copy()
+
+
+def _tip(m, d, q):
+    d.qpos[:] = q
+    mujoco.mj_kinematics(m, d)
+    e, h = d.xpos[m.body("right_lower_arm").id], d.xpos[m.body("right_hand").id]
+    return h + STICK * (h - e) / np.linalg.norm(h - e)
+
+
+def _solve_tip(m, d, q, target, iters=40):
+    """Right-arm joint angles that put the pointer stick's tip on `target` (world). Three joints,
+    three numbers to hit, so it's solvable when in reach."""
+    q = q.copy()
+    sl = ARM_Q["right"]
+    target = np.asarray(target, float)
+    for _ in range(iters):
+        r = _tip(m, d, q) - target
+        if np.abs(r).max() < 1e-4:
+            break
+        J = np.zeros((3, 3))
+        for j, k in enumerate(range(sl.start, sl.stop)):
+            qq = q.copy(); qq[k] += 1e-4
+            J[:, j] = (_tip(m, d, qq) - _tip(m, d, q)) / 1e-4
+        q[sl] -= np.linalg.solve(J.T @ J + 1e-3 * np.eye(3), J.T @ r)
+    return q
+
+
+def teacher(at=(0.0, 0.0), yaw_deg=-115.0, seconds=6.0, points=(), taps=2, tap_dir=(0.0, -1.0, 0.0), rest_tip=None):
+    """Teacher Rupert standing beside the board. points: [(start_s, end_s, tip_world_xyz)]: the stick
+    tip travels up to each spot (0.5 s), taps it `taps` times and holds; between points less than 0.6 s
+    apart it glides across, otherwise it goes back down to rest. The arm is solved every frame from
+    where the tip should be, so it moves the short, natural way. tap_dir: away from the board."""
+    m = model()
+    d = mujoco.MjData(m)
+    q0 = standing(m, d, at[0], at[1], yaw_deg)
+    sl = ARM_Q["right"]
+    f = np.array([np.cos(np.radians(yaw_deg)), np.sin(np.radians(yaw_deg))])
+    right = np.array([f[1], -f[0]])
+    if rest_tip is None:          # holding the stick angled down in front of him, tip off the ground
+        rest_tip = (*(np.array(at) + 0.45 * f + 0.2 * right), 0.35)
+    rest_tip = np.asarray(rest_tip, float)
+    q = q0.copy()
+    for k in range(1, 21):        # ease the arm into the rest grip from hanging straight down
+        q = _solve_tip(m, d, q, _tip(m, d, q0) + k / 20 * (rest_tip - _tip(m, d, q0)), iters=30)
+    pts = [(t0, t1, np.asarray(tip, float)) for t0, t1, tip in points]
+    qs, worst = [], 0.0
+    for i in range(int(seconds * FPS)):
+        t = i / FPS
+        want = rest_tip.copy()
+        for k, (t0, t1, tip) in enumerate(pts):
+            if not (t0 - 0.5 <= t <= t1 + 0.5):
+                continue
+            glide_in = k and t0 - pts[k - 1][1] < 0.6
+            glide_out = k + 1 < len(pts) and pts[k + 1][0] - t1 < 0.6
+            if t > t1 and glide_out:
+                continue
+            src = pts[k - 1][2] if glide_in else rest_tip
+            up = _ease((t - (t0 - 0.5)) / 0.5)
+            down = 0.0 if glide_out else _ease((t - t1) / 0.5)
+            mid = src + up * (tip - src)
+            if not glide_in:
+                mid = mid + np.array([0, 0, 0.12]) * np.sin(np.pi * up)      # a slight lift on the way
+            tap_len = max(0.4, (t1 - t0) * 0.5)
+            tap = np.sin(np.pi * taps * (t - t0) / tap_len) ** 2 if t0 <= t <= t0 + tap_len else 0.0
+            mid = mid + 0.07 * tap * np.asarray(tap_dir)
+            want = mid + down * (rest_tip - mid)
+        q = _solve_tip(m, d, q, want, iters=15)
+        worst = max(worst, float(np.linalg.norm(_tip(m, d, q) - want)))
+        q[2] = q0[2] + 0.004 * np.sin(2 * np.pi * t / 1.6)
+        qs.append(q.copy())
+    print(f"  stick tip: worst miss over the shot {worst * 100:.1f} cm")
+    return kinematics(m, qs)
+
+
+def stick_tip(xp, names, frame):
+    """Where the stick tip is at this frame (world), for checking the aim."""
+    e, h = xp[frame, names.index("right_lower_arm")], xp[frame, names.index("right_hand")]
+    return h + STICK * (h - e) / np.linalg.norm(h - e)
 
 
 if __name__ == "__main__":
