@@ -17,7 +17,7 @@ echo "Started $(date)" >> "$PROG"
 step() {   # label, then the command
   local label=$1; shift
   echo "=== $label $(date '+%a %H:%M')" >> "$LOG"
-  if "$@" >> "$LOG" 2>&1; then echo "done    $(date '+%a %H:%M')  $label" >> "$PROG"
+  if "$@" >> "$LOG" 2>&1 < /dev/null; then echo "done    $(date '+%a %H:%M')  $label" >> "$PROG"
   else echo "FAILED  $(date '+%a %H:%M')  $label (see log_marathon.txt)" >> "$PROG"; fi
 }
 

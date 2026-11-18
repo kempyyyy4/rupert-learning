@@ -15,7 +15,7 @@ clip() {   # chapter run step start label cam tag
   if [ -f "${f%.mp4}_clean.mp4" ]; then echo "--- skip $f (done)" >> "$LOG"; return; fi
   echo "=== $f $(date +%H:%M)" >> "$LOG"
   if "$PY" -m rupert.make_clip --run "outputs/$2" --step "$3" --chapter "$1" --start "$4" --seconds 10 \
-       --camera "cam_$6" --out "$f" >> "$LOG" 2>&1; then
+       --camera "cam_$6" --out "$f" >> "$LOG" 2>&1 < /dev/null; then
     echo "    done $(date +%H:%M)" >> "$LOG"
   else
     echo "    FAILED (see above)" >> "$LOG"
@@ -29,7 +29,7 @@ judge() {   # blend last_frame
   mkdir -p "$R/$OUT/frames_$1"
   /e/Blender/blender.exe -b "renders/ep01_shots/$1.blend" --python-expr \
     "import bpy; s=bpy.context.scene; s.render.resolution_percentage=100; s.camera=s.objects['cam_face']" \
-    -o "$R/$OUT/frames_$1/f_####" -s 1 -e "$2" -a >> "$LOG" 2>&1
+    -o "$R/$OUT/frames_$1/f_####" -s 1 -e "$2" -a >> "$LOG" 2>&1 < /dev/null
   "$PY" -c "import imageio_ffmpeg,subprocess; subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-y','-loglevel','error','-framerate','50','-i','$OUT/frames_$1/f_%04d.png','-c:v','libx264','-crf','16','-pix_fmt','yuv420p','$f'],check=True)" \
     && echo "    done $(date +%H:%M)" >> "$LOG" || echo "    FAILED" >> "$LOG"
 }

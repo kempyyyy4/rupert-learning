@@ -349,7 +349,8 @@ TL_CAMS = {
     "side_close": (3.0, 10.0, 2.5, 28, 0.0),     # start line, about 13 m of track
     "side_mid": (12.0, 28.0, 5.0, 40, 0.0),      # start to 25 m
     "side_wide": (27.0, 60.0, 12.0, 35, 0.0),    # start to 60 m
-    "side_pan": (4.0, 18.0, 3.0, 50, 0.85),      # follows him down the track
+    "side_pan": (4.0, 18.0, 3.0, 50, 0.85),      # drifts after him (loses him past ~60 m)
+    "side_follow": (2.0, 18.0, 3.0, 50, 1.0),    # keeps pace: him just left of centre, the signs fly past
 }
 DRAFT = ("; s.render.resolution_x=640; s.render.resolution_y=360; s.render.resolution_percentage=100; "
          "s.eevee.taa_render_samples=4; s.eevee.use_raytracing=False")
