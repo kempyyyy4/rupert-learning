@@ -17,7 +17,9 @@ echo "Started $(date)" >> "$PROG"
 step() {   # label, then the command
   local label=$1; shift
   echo "=== $label $(date '+%a %H:%M')" >> "$LOG"
-  if "$@" >> "$LOG" 2>&1 < /dev/null; then echo "done    $(date '+%a %H:%M')  $label" >> "$PROG"
+  if "$@" >> "$LOG" 2>&1 < /dev/null || { echo "    failed once, retrying in 60 s" >> "$LOG"; sleep 60;
+                                          "$@" >> "$LOG" 2>&1 < /dev/null; }; then
+    echo "done    $(date '+%a %H:%M')  $label" >> "$PROG"
   else echo "FAILED  $(date '+%a %H:%M')  $label (see log_marathon.txt)" >> "$PROG"; fi
 }
 
@@ -60,4 +62,8 @@ for cam in side_close side_pan; do
       --camera "$cam" --out-dir "$T" $reuse
   done
 done
+# 5. hand-animated shots at full quality (Tom liked the tests, 2026-11-19)
+S=renders/ep01_shots/final
+[ -f $S/opening_this_is_rupert_clean.mp4 ] || step "opening: This is Rupert" "$PY" -m rupert.make_sequence opening --out-dir $S
+[ -f $S/teacher_points.mp4 ] || step "Teacher Rupert: points board" "$PY" -m rupert.make_sequence teacher --out-dir $S
 echo "ALL FINISHED $(date)" >> "$PROG"

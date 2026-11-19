@@ -15,7 +15,10 @@ clip() {   # chapter run step start label cam tag
   if [ -f "${f%.mp4}_clean.mp4" ]; then echo "--- skip $f (done)" >> "$LOG"; return; fi
   echo "=== $f $(date +%H:%M)" >> "$LOG"
   if "$PY" -m rupert.make_clip --run "outputs/$2" --step "$3" --chapter "$1" --start "$4" --seconds 10 \
-       --camera "cam_$6" --out "$f" >> "$LOG" 2>&1 < /dev/null; then
+       --camera "cam_$6" --out "$f" >> "$LOG" 2>&1 < /dev/null || \
+     { echo "    failed once, retrying in 60 s" >> "$LOG"; sleep 60;
+       "$PY" -m rupert.make_clip --run "outputs/$2" --step "$3" --chapter "$1" --start "$4" --seconds 10 \
+         --camera "cam_$6" --out "$f" --rebuild >> "$LOG" 2>&1 < /dev/null; }; then
     echo "    done $(date +%H:%M)" >> "$LOG"
   else
     echo "    FAILED (see above)" >> "$LOG"

@@ -309,7 +309,7 @@ def glasses(body, name="glasses", rgb=(0.02, 0.02, 0.02), w=0.031, h=0.022, t=0.
 
 
 def teacher(body):
-    """Teacher Rupert (EP01's explainer): light-blue shirt, maroon tie, brown cords, brown shoes,
+    """Teacher Rupert (EP01's explainer): light-blue shirt, orange tie, brown cords, brown shoes,
     glasses. Same head and hair, so he's still obviously Rupert."""
     lw = body.shape("lower_waist")
     top = [("capsule", body.chest_m(), 0.124, 0.1),
@@ -318,7 +318,7 @@ def teacher(body):
     shirt = garment(body, "teacher_shirt", (0.56, 0.71, 0.9), ["torso", "lower_waist", *ARMS], 0.011, top,
                     rough=0.75, sheen=0.2)
     garment(body, "teacher_cords", (0.36, 0.22, 0.11), LEGS, 0.012, rough=0.9, sheen=0.6)
-    tie_on(body, shirt, (0.42, 0.04, 0.07), name="teacher_tie")
+    tie_on(body, shirt, ORANGE, name="teacher_tie")          # orange: his colour (Tom)
     glasses(body, "teacher_glasses")
     running_shoes(body, (0.2, 0.11, 0.05), (0.08, 0.05, 0.03), (0.2, 0.11, 0.05), name="teacher_shoe")
 
