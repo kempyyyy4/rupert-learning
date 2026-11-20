@@ -58,6 +58,12 @@ def whiteboard(spec, coll):
     bsdf = nodes["Principled BSDF"]
     tex = nodes.new("ShaderNodeTexImage")
     tex.image = img
+    if spec.get("sequence"):                   # a moving drawing: f_0001.png, f_0002.png ... one per frame
+        img.source = "SEQUENCE"
+        tex.image_user.frame_duration = spec["sequence"]
+        tex.image_user.frame_start = 1
+        tex.image_user.frame_offset = 0
+        tex.image_user.use_auto_refresh = True
     links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 0.55          # a little sheen, but no sky glare
     links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])

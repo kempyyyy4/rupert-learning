@@ -286,21 +286,33 @@ def opening(scale, draft=False):
 
 def teacher(scale, draft=False, board="points"):
     """Teacher Rupert: a whiteboard drops out of the sky beside him (lands with a bounce), and he
-    taps the drawings with his pointer stick. Board drawings: rupert/board_art.py."""
+    taps or traces the drawings with his pointer stick. Boards: rupert/board_art.py (BOARDS)."""
     from rupert import board_art, poses
+    spec = board_art.BOARDS[board]
     X0 = 20.0                                                 # on the track, 20 m from the start
     W, H, centre = 2.2, 1.4, (X0 - 1.55, 0.5, 1.5)
-    img = OUT / f"board_{board}.png"
-    anchors = board_art.draw(board, img)
+    secs = spec["seconds"]
+    n_frames = int(secs * FPS)
+    if spec.get("dynamic"):                                   # moving drawing: one picture per frame
+        folder = OUT / f"board_{board}"
+        spots = board_art.draw_frames(board, folder, n_frames, FPS)
+        img = folder / "f_0001.png"
+    else:
+        img = OUT / f"board_{board}.png"
+        spots = board_art.draw(board, img)
     x0, ztop, y_face = centre[0] - W / 2, centre[2] + H / 2, centre[1] - 0.03
-    tips = {k: (x0 + u * W, y_face, ztop - v * H) for k, (u, v) in anchors.items()}
-    names_order = list(tips)
-    secs = 7.0
-    points = [(2.0, 3.4, tips[names_order[0]]), (3.9, 5.4, tips[names_order[1]])]
+    world = lambda uv: (x0 + uv[0] * W, y_face, ztop - uv[1] * H)
+    points = []
+    for name, t0, t1 in spec["taps"]:
+        spot = spots[name]
+        tip = [world(uv) for uv in spot] if isinstance(spot, list) else world(spot)
+        points.append((t0, t1, tip))
     xp, xq, names = poses.teacher(at=(X0, 0.0), yaw_deg=-100.0, seconds=secs, points=points)
     for (t0, t1, tip) in points:
+        tip = np.atleast_2d(tip)
         f = int((t0 + t1) / 2 * FPS)
-        err = np.linalg.norm(poses.stick_tip(xp, names, f) - np.array(tip))
+        want = poses._along(tip, 0.5)
+        err = np.linalg.norm(poses.stick_tip(xp, names, f) - want)
         print(f"  stick tip {err * 100:.1f} cm from its target", flush=True)
     npz = OUT / f"teacher_{board}.npz"
     np.savez(npz, xpos=xp[:, None], xquat=xq[:, None], alive=np.ones((len(xp), 1), bool),
@@ -309,12 +321,13 @@ def teacher(scale, draft=False, board="points"):
     cam = {"name": "cam_teacher", "fstop": 5.6, "keys": [
         [1, [X0 - 1.2, -4.1, 1.5], [X0 - 1.2, 0.2, 1.42], 35],
         [n, [X0 - 1.2, -3.7, 1.5], [X0 - 1.2, 0.2, 1.42], 35]]}
+    wb = {"image": str(img.resolve()), "centre": centre, "size": [W, H], "land": int(0.9 * FPS)}
+    if spec.get("dynamic"):
+        wb["sequence"] = n_frames
     props = npz.with_suffix(".props.json")
-    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_teacher", "pointer": True,
-                                 "whiteboard": {"image": str(img.resolve()), "centre": centre, "size": [W, H],
-                                                "land": int(0.9 * FPS)}}))
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_teacher", "pointer": True, "whiteboard": wb}))
     blend = npz.with_suffix(".blend")
-    build(npz, blend, 1, "LESSON 1", costume="teacher", extra=["--props", props])
+    build(npz, blend, 1, spec["screen"], costume="teacher", extra=["--props", props])
     tag = "_draft" if draft else ""
     render(blend, "cam_teacher", 1, n, OUT / f"teacher_{board}{tag}.mp4", scale=scale, draft=draft)
 
@@ -595,6 +608,7 @@ def main():
                     help="ghost: camera(s), comma separated, e.g. " + ",".join(TL_CAMS))
     ap.add_argument("--draft", action="store_true", help="ghost: quick 640x360 test version (minutes, not hours)")
     ap.add_argument("--reuse", action="store_true", help="ghost: reuse the last practice footage (skip the physics)")
+    ap.add_argument("--board", default="points", help="teacher: board(s), comma separated: points, brain, graph, boat")
     a = ap.parse_args()
     global OUT
     if a.out_dir:
@@ -606,8 +620,11 @@ def main():
             a.reuse = True                                  # later cameras reuse the same footage
     elif a.shot in ("swarm", "montage"):
         {"swarm": swarm, "montage": montage}[a.shot](a.chapter, a.scale)
-    elif a.shot in ("opening", "teacher"):
-        {"opening": opening, "teacher": teacher}[a.shot](a.scale, draft=a.draft)
+    elif a.shot == "teacher":
+        for board in a.board.split(","):
+            teacher(a.scale, draft=a.draft, board=board)
+    elif a.shot == "opening":
+        opening(a.scale, draft=a.draft)
     else:
         {"intro": intro, "timelapse": timelapse, "judge": judge, "forgot": forgot}[a.shot](a.scale)
 

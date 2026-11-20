@@ -153,10 +153,11 @@ def _solve_tip(m, d, q, target, iters=40):
 
 
 def teacher(at=(0.0, 0.0), yaw_deg=-115.0, seconds=6.0, points=(), taps=2, tap_dir=(0.0, -1.0, 0.0), rest_tip=None):
-    """Teacher Rupert standing beside the board. points: [(start_s, end_s, tip_world_xyz)]: the stick
-    tip travels up to each spot (0.5 s), taps it `taps` times and holds; between points less than 0.6 s
-    apart it glides across, otherwise it goes back down to rest. The arm is solved every frame from
-    where the tip should be, so it moves the short, natural way. tap_dir: away from the board."""
+    """Teacher Rupert standing beside the board. points: [(start_s, end_s, target)], where a target is
+    one spot (world xyz: he taps it `taps` times and holds) or a path of spots (traced from start to end).
+    The arm swings up to the board in 0.5 s and back down to rest afterwards, joints moving together like
+    a real arm; between points less than 0.6 s apart the tip glides across instead. While pointing, the
+    arm is solved every frame from where the tip should be. tap_dir: away from the board."""
     m = model()
     d = mujoco.MjData(m)
     q0 = standing(m, d, at[0], at[1], yaw_deg)
@@ -169,34 +170,67 @@ def teacher(at=(0.0, 0.0), yaw_deg=-115.0, seconds=6.0, points=(), taps=2, tap_d
     q = q0.copy()
     for k in range(1, 21):        # ease the arm into the rest grip from hanging straight down
         q = _solve_tip(m, d, q, _tip(m, d, q0) + k / 20 * (rest_tip - _tip(m, d, q0)), iters=30)
-    pts = [(t0, t1, np.asarray(tip, float)) for t0, t1, tip in points]
-    qs, worst = [], 0.0
+    q_rest = q.copy()
+    pts = [(t0, t1, np.atleast_2d(np.asarray(tip, float))) for t0, t1, tip in points]
+    gap = [pts[k + 1][0] - t1 if k + 1 < len(pts) else 99.0 for k, (_, t1, _) in enumerate(pts)]
+    glide = [g < 0.6 for g in gap]                      # tip slides across the board to the next spot
+    direct = [0.6 <= g < 1.0 for g in gap]              # arm swings straight to the next spot
+    # the arm pose at the first spot of each target, reached from rest (the swing up aims for this)
+    q_at = [_solve_tip(m, d, q_rest, path[0], iters=200) for _, _, path in pts]
+    for qa in q_at:
+        qa[sl] = q_rest[sl] + _wrap(qa[sl] - q_rest[sl])
+    qs, worst, worst_t, q_left = [], 0.0, 0.0, None
     for i in range(int(seconds * FPS)):
         t = i / FPS
-        want = rest_tip.copy()
-        for k, (t0, t1, tip) in enumerate(pts):
-            if not (t0 - 0.5 <= t <= t1 + 0.5):
-                continue
-            glide_in = k and t0 - pts[k - 1][1] < 0.6
-            glide_out = k + 1 < len(pts) and pts[k + 1][0] - t1 < 0.6
-            if t > t1 and glide_out:
-                continue
-            src = pts[k - 1][2] if glide_in else rest_tip
-            up = _ease((t - (t0 - 0.5)) / 0.5)
-            down = 0.0 if glide_out else _ease((t - t1) / 0.5)
-            mid = src + up * (tip - src)
-            if not glide_in:
-                mid = mid + np.array([0, 0, 0.12]) * np.sin(np.pi * up)      # a slight lift on the way
-            tap_len = max(0.4, (t1 - t0) * 0.5)
-            tap = np.sin(np.pi * taps * (t - t0) / tap_len) ** 2 if t0 <= t <= t0 + tap_len else 0.0
-            mid = mid + 0.07 * tap * np.asarray(tap_dir)
-            want = mid + down * (rest_tip - mid)
-        q = _solve_tip(m, d, q, want, iters=15)
-        worst = max(worst, float(np.linalg.norm(_tip(m, d, q) - want)))
+        want, swing = None, None           # tip target while pointing, or (from, to, amount) while swinging
+        for k, (t0, t1, path) in enumerate(pts):
+            glide_in = k and (glide[k - 1] or direct[k - 1])
+            if t0 - 0.5 <= t < t0 and not glide_in:                         # swinging up to the board
+                swing = (q_rest, q_at[k], _ease((t - (t0 - 0.5)) / 0.5))
+            elif t0 <= t <= t1:                                               # pointing / tracing
+                want = _along(path, (t - t0) / max(t1 - t0, 1e-6))
+                if len(path) == 1:
+                    tap_len = max(0.4, (t1 - t0) * 0.5)
+                    if t <= t0 + tap_len:
+                        want = want + 0.07 * np.sin(np.pi * taps * (t - t0) / tap_len) ** 2 * np.asarray(tap_dir)
+            elif t1 < t < pts[k + 1][0] if glide[k] else False:               # gliding to the next one
+                want = path[-1] + _ease((t - t1) / (pts[k + 1][0] - t1)) * (pts[k + 1][2][0] - path[-1])
+            elif t1 < t < pts[k + 1][0] if direct[k] else False:              # swinging to the next one
+                swing = (q_left, q_at[k + 1], _ease((t - t1) / gap[k]))
+            elif t1 < t <= t1 + 0.5 and not (glide[k] or direct[k]):          # swinging back down
+                swing = (q_left, q_rest, _ease((t - t1) / 0.5))
+        if want is not None:
+            q = _solve_tip(m, d, q, want, iters=15)
+            miss = float(np.linalg.norm(_tip(m, d, q) - want))
+            if miss > worst:
+                worst, worst_t = miss, t
+            q_left = q.copy()
+        elif swing is not None:
+            a_, b_, u = swing
+            q = q.copy()
+            q[sl] = a_[sl] + u * _wrap(b_[sl] - a_[sl])                   # the short way round
+        else:
+            q = q_rest.copy()
         q[2] = q0[2] + 0.004 * np.sin(2 * np.pi * t / 1.6)
         qs.append(q.copy())
-    print(f"  stick tip: worst miss over the shot {worst * 100:.1f} cm")
+    print(f"  stick tip: worst miss while pointing {worst * 100:.1f} cm (at {worst_t:.2f} s)")
     return kinematics(m, qs)
+
+
+def _wrap(a):
+    """Angles brought into -pi..pi (the solver can wind a joint round several full turns)."""
+    return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi
+
+
+def _along(path, s):
+    """The point a fraction s (0..1) of the way along a path of points, by distance."""
+    if len(path) == 1:
+        return path[0]
+    seg = np.linalg.norm(np.diff(path, axis=0), axis=1)
+    cum = np.r_[0, np.cumsum(seg)]
+    d = np.clip(s, 0, 1) * cum[-1]
+    j = min(np.searchsorted(cum, d, side="right") - 1, len(seg) - 1)
+    return path[j] + (d - cum[j]) / max(seg[j], 1e-9) * (path[j + 1] - path[j])
 
 
 def stick_tip(xp, names, frame):
