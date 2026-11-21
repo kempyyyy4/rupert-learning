@@ -307,7 +307,8 @@ def teacher(scale, draft=False, board="points"):
         spot = spots[name]
         tip = [world(uv) for uv in spot] if isinstance(spot, list) else world(spot)
         points.append((t0, t1, tip))
-    xp, xq, names = poses.teacher(at=(X0, 0.0), yaw_deg=-100.0, seconds=secs, points=points)
+    xp, xq, names = poses.teacher(at=(X0, 0.0), yaw_deg=-115.0, seconds=secs, points=points,
+                                  look_at=(X0 - 1.2, -4.0, 1.5))          # the camera
     for (t0, t1, tip) in points:
         tip = np.atleast_2d(tip)
         f = int((t0 + t1) / 2 * FPS)

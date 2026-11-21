@@ -2,9 +2,10 @@
 hello in the intro, or the judge holding up a score card.
 
 Poses are set by saying where the elbows and hands should be (relative to the chest);
-a small solver finds the joint angles. Joint limits are ignored: it's animation, not the
-body that trains. Output is the same replay format as evaluate.py, so the Blender
-pipeline renders it like any other clip.
+a small solver finds the joint angles. Joint limits are mostly ignored: it's animation, not
+the body that trains. Teacher Rupert is the exception: his pointing arm stays inside real limits
+and his waist and feet move to help it reach. Output is the same replay format as evaluate.py,
+so the Blender pipeline renders it like any other clip.
 """
 import mujoco
 import numpy as np
@@ -152,41 +153,93 @@ def _solve_tip(m, d, q, target, iters=40):
     return q
 
 
-def teacher(at=(0.0, 0.0), yaw_deg=-115.0, seconds=6.0, points=(), taps=2, tap_dir=(0.0, -1.0, 0.0), rest_tip=None):
+# ---- Teacher Rupert: the whole upper body helps the pointing arm ---------------------------
+# Body settings while pointing: right arm (3 joints, kept inside their real limits), waist twist,
+# waist bend forward/back, waist bend sideways, and turning on the spot. His chest is the root of
+# the skeleton, so after bending the waist the whole body is moved back so his hips and feet stay put.
+BODY_Q = [22, 23, 24, 7, 8, 9]
+BODY_LIMITS = np.radians([[-85, 60], [-85, 60], [-110, 40],     # right arm (shoulders: the model's own limits; elbow nearly straight to well bent)
+                          [-35, 35], [-30, 20], [-25, 25],      # waist: twist, forward/back, sideways
+                          [-50, 50]])                           # turning on the spot
+BODY_COST = np.array([0.002, 0.002, 0.002, 0.006, 0.006, 0.008, 0.001])   # how much he'd rather not move each (turning his feet is cheapest)
+
+
+def _pose(m, d, base, v):
+    """Full qpos for body settings v, with the hips planted where they are in `base`
+    (turned by v[6] about the vertical)."""
+    if getattr(_pose, "_base_id", None) is not id(base):        # remember where the hips start
+        d.qpos[:] = base
+        mujoco.mj_kinematics(m, d)
+        pid = m.body("pelvis").id
+        _pose._hips = (d.xmat[pid].reshape(3, 3).copy(), d.xpos[pid].copy())
+        _pose._base_id = id(base)
+    R0, p0 = _pose._hips
+    c, s_ = np.cos(v[6]), np.sin(v[6])
+    Rt = np.array([[c, -s_, 0], [s_, c, 0], [0, 0, 1]]) @ R0
+    q = base.copy()
+    q[BODY_Q] = v[:6]
+    d.qpos[:] = q
+    mujoco.mj_kinematics(m, d)
+    pid = m.body("pelvis").id
+    Rc, pc = d.xmat[pid].reshape(3, 3).copy(), d.xpos[pid].copy()
+    C = Rt @ Rc.T                                    # the move that puts the hips back
+    root_R = np.zeros(9)
+    mujoco.mju_quat2Mat(root_R, q[3:7])
+    new_q = np.zeros(4)
+    mujoco.mju_mat2Quat(new_q, (C @ root_R.reshape(3, 3)).ravel())
+    q[3:7] = new_q
+    q[0:3] = p0 + C @ (q[0:3] - pc)
+    return q
+
+
+def _solve_body(m, d, base, v, target, home, iters=15):
+    """Body settings that put the stick tip on `target`, staying close to `home` and inside the limits.
+    The arm does most of the work; the waist and feet join in as the reach gets harder."""
+    from scipy.optimize import least_squares
+    lo, hi = BODY_LIMITS.T
+    v = np.clip(np.asarray(v, float), lo + 1e-6, hi - 1e-6)
+    target = np.asarray(target, float)
+    w = np.sqrt(BODY_COST)
+    res = lambda x: np.r_[_tip(m, d, _pose(m, d, base, x)) - target, w * (x - home)]
+    return least_squares(res, v, bounds=(lo, hi), method="trf", diff_step=1e-4,
+                         max_nfev=max(20, iters * 2), xtol=1e-6, ftol=1e-9).x
+
+
+def teacher(at=(0.0, 0.0), yaw_deg=-115.0, seconds=6.0, points=(), taps=2, tap_dir=(0.0, -1.0, 0.0), rest_tip=None,
+            look_at=None):
     """Teacher Rupert standing beside the board. points: [(start_s, end_s, target)], where a target is
     one spot (world xyz: he taps it `taps` times and holds) or a path of spots (traced from start to end).
-    The arm swings up to the board in 0.5 s and back down to rest afterwards, joints moving together like
-    a real arm; between points less than 0.6 s apart the tip glides across instead. While pointing, the
-    arm is solved every frame from where the tip should be. tap_dir: away from the board."""
+    He swings up to the board in 0.5 s and back down to rest afterwards; between points less than 0.6 s
+    apart the tip glides across instead. While pointing, his arm, waist and feet are solved every frame
+    from where the tip should be (arm inside its real limits). tap_dir: away from the board.
+    look_at: the camera position. His head glances at the board as the stick goes up, then turns back
+    to the camera while he explains (only the head turns, up to 70 degrees)."""
     m = model()
     d = mujoco.MjData(m)
-    q0 = standing(m, d, at[0], at[1], yaw_deg)
-    sl = ARM_Q["right"]
+    base = standing(m, d, at[0], at[1], yaw_deg)
     f = np.array([np.cos(np.radians(yaw_deg)), np.sin(np.radians(yaw_deg))])
     right = np.array([f[1], -f[0]])
     if rest_tip is None:          # holding the stick angled down in front of him, tip off the ground
         rest_tip = (*(np.array(at) + 0.45 * f + 0.2 * right), 0.35)
     rest_tip = np.asarray(rest_tip, float)
-    q = q0.copy()
-    for k in range(1, 21):        # ease the arm into the rest grip from hanging straight down
-        q = _solve_tip(m, d, q, _tip(m, d, q0) + k / 20 * (rest_tip - _tip(m, d, q0)), iters=30)
-    q_rest = q.copy()
+    home = np.r_[np.clip(base[BODY_Q[:3]], *BODY_LIMITS[:3].T), 0.0, 0.0, 0.0, 0.0]
+    v, tip0 = home.copy(), _tip(m, d, _pose(m, d, base, home))
+    for k in range(1, 21):        # ease into the rest grip from arms hanging down
+        v = _solve_body(m, d, base, v, tip0 + k / 20 * (rest_tip - tip0), home, iters=30)
+    v_rest = v.copy()
     pts = [(t0, t1, np.atleast_2d(np.asarray(tip, float))) for t0, t1, tip in points]
     gap = [pts[k + 1][0] - t1 if k + 1 < len(pts) else 99.0 for k, (_, t1, _) in enumerate(pts)]
     glide = [g < 0.6 for g in gap]                      # tip slides across the board to the next spot
-    direct = [0.6 <= g < 1.0 for g in gap]              # arm swings straight to the next spot
-    # the arm pose at the first spot of each target, reached from rest (the swing up aims for this)
-    q_at = [_solve_tip(m, d, q_rest, path[0], iters=200) for _, _, path in pts]
-    for qa in q_at:
-        qa[sl] = q_rest[sl] + _wrap(qa[sl] - q_rest[sl])
-    qs, worst, worst_t, q_left = [], 0.0, 0.0, None
+    direct = [0.6 <= g < 1.0 for g in gap]              # swings straight to the next spot
+    v_at = [_solve_body(m, d, base, v_rest, path[0], home, iters=200) for _, _, path in pts]
+    qs, worst, worst_t, v_left = [], 0.0, 0.0, None
     for i in range(int(seconds * FPS)):
         t = i / FPS
         want, swing = None, None           # tip target while pointing, or (from, to, amount) while swinging
         for k, (t0, t1, path) in enumerate(pts):
             glide_in = k and (glide[k - 1] or direct[k - 1])
             if t0 - 0.5 <= t < t0 and not glide_in:                         # swinging up to the board
-                swing = (q_rest, q_at[k], _ease((t - (t0 - 0.5)) / 0.5))
+                swing = (v_rest, v_at[k], _ease((t - (t0 - 0.5)) / 0.5))
             elif t0 <= t <= t1:                                               # pointing / tracing
                 want = _along(path, (t - t0) / max(t1 - t0, 1e-6))
                 if len(path) == 1:
@@ -196,25 +249,58 @@ def teacher(at=(0.0, 0.0), yaw_deg=-115.0, seconds=6.0, points=(), taps=2, tap_d
             elif t1 < t < pts[k + 1][0] if glide[k] else False:               # gliding to the next one
                 want = path[-1] + _ease((t - t1) / (pts[k + 1][0] - t1)) * (pts[k + 1][2][0] - path[-1])
             elif t1 < t < pts[k + 1][0] if direct[k] else False:              # swinging to the next one
-                swing = (q_left, q_at[k + 1], _ease((t - t1) / gap[k]))
+                swing = (v_left, v_at[k + 1], _ease((t - t1) / gap[k]))
             elif t1 < t <= t1 + 0.5 and not (glide[k] or direct[k]):          # swinging back down
-                swing = (q_left, q_rest, _ease((t - t1) / 0.5))
+                swing = (v_left, v_rest, _ease((t - t1) / 0.5))
         if want is not None:
-            q = _solve_tip(m, d, q, want, iters=15)
-            miss = float(np.linalg.norm(_tip(m, d, q) - want))
+            v = _solve_body(m, d, base, v, want, home, iters=15)
+            miss = float(np.linalg.norm(_tip(m, d, _pose(m, d, base, v)) - want))
             if miss > worst:
                 worst, worst_t = miss, t
-            q_left = q.copy()
+            v_left = v.copy()
         elif swing is not None:
             a_, b_, u = swing
-            q = q.copy()
-            q[sl] = a_[sl] + u * _wrap(b_[sl] - a_[sl])                   # the short way round
+            v = a_ + u * (b_ - a_)
         else:
-            q = q_rest.copy()
-        q[2] = q0[2] + 0.004 * np.sin(2 * np.pi * t / 1.6)
-        qs.append(q.copy())
+            v = v_rest.copy()
+        q = _pose(m, d, base, v)
+        q[2] += 0.004 * np.sin(2 * np.pi * t / 1.6)                          # breathing
+        qs.append(q)
     print(f"  stick tip: worst miss while pointing {worst * 100:.1f} cm (at {worst_t:.2f} s)")
-    return kinematics(m, qs)
+    xp, xq, names = kinematics(m, qs)
+    if look_at is not None:
+        _turn_head(xp, xq, names, np.asarray(look_at, float), pts)
+    return xp, xq, names
+
+
+def _turn_head(xp, xq, names, cam, pts, max_deg=70.0):
+    """Turn only the head (about the vertical, in place): towards the stick tip as each point
+    starts, then back to the camera."""
+    h, n = names.index("head"), len(xp)
+    t = np.arange(n) / FPS
+    to_cam = np.ones(n)                                  # 1 = looking at the camera, 0 = at the stick tip
+    for t0, t1, _ in pts:
+        glance = np.clip(np.minimum((t - (t0 - 0.6)) / 0.3, ((t0 + 0.5) - t) / 0.4 + 1), 0, 1)
+        to_cam = np.minimum(to_cam, 1 - _ease(glance))
+    rel = np.zeros(n)
+    for f in range(n):
+        R = np.zeros(9)
+        mujoco.mju_quat2Mat(R, xq[f, h])
+        fwd = R.reshape(3, 3)[:, 0]
+        facing = np.arctan2(fwd[1], fwd[0])
+        e, hand = xp[f, names.index("right_lower_arm")], xp[f, names.index("right_hand")]
+        tip = hand + STICK * (hand - e) / np.linalg.norm(hand - e)
+        a_cam = np.arctan2(*(cam - xp[f, h])[1::-1])
+        a_tip = np.arctan2(*(tip - xp[f, h])[1::-1])
+        want = a_tip + to_cam[f] * _wrap(a_cam - a_tip)
+        rel[f] = np.clip(_wrap(want - facing), -np.radians(max_deg), np.radians(max_deg))
+    k = 9                                                # smooth out any flicks (about 0.2 s)
+    rel = np.convolve(np.pad(rel, k, mode="edge"), np.ones(2 * k + 1) / (2 * k + 1), mode="same")[k:-k]
+    for f in range(n):
+        turn = np.array([np.cos(rel[f] / 2), 0.0, 0.0, np.sin(rel[f] / 2)])
+        out = np.zeros(4)
+        mujoco.mju_mulQuat(out, turn, xq[f, h])
+        xq[f, h] = out
 
 
 def _wrap(a):

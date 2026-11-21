@@ -2,6 +2,10 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-21
+- **Teacher Rupert boards 2–4 built** (brain, score graph, boat; quick tests in `renders/ep01_shots/tests/`). The score graph shows every real check-in as a thin line plus a bold "typical score" line, and labels the dips "bad days!". The 463M "forgot" dip is one of 12 similar drops, so singling it out would mislead.
+- **Teacher Rupert's whole body helps him point** (Tom: "his arm is a bit buggy... his body should lean"). The arm now stays inside its real joint limits; his waist twists and leans and he turns on his feet to reach, with his hips and feet planted. He stands at -115° (was -100°) so every spot is in reach (worst miss 1.3 cm). His head glances at the board as each point starts, then turns back to the camera.
+
 ## 2026-11-20
 - **EP01 timelapses use the close side-on camera** (`renders/ep01_final/timelapse_v2/tl_*_ghost_side_close*.mp4`, all 9 chapters, falls land). Tom preferred it over the follow-cam versions.
 - **No Olympic-angle timelapses.** It would have been about 9–10 h of overnight rendering, plus the camera would have to keep pace with Rupert instead of trailing like a real TV camera; Tom: "we wont bother".
