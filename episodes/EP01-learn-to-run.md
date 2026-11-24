@@ -99,6 +99,16 @@ A running total over all training, in story order (`rupert/ep01_story.py`), endi
   - `intro_3_collapse_slowmo_4x.mp4`: the same fall in 4x slow motion, side view.
   - `timelapse_early_training.mp4`: fixed wide shot of the start line. 16 attempts from successive check-ins (EXP-009, 0 to 80M steps) at double speed, with the board and counter climbing from 1 to about 850,000. He goes from collapsing instantly to walking off.
   - `judge_real_runners.mp4`: the real runners the judge studied, fitted onto Rupert's body. Four play in full, then the other 22 flash by while a "REAL RUNNER" counter races to 26.
+- Hand-animated set pieces (2026-11-24, `python -m rupert.make_sequence <shot> [--draft]`; quick tests in `renders/ep01_shots/tests/`):
+  - `judge_walk`: the judge walks in towards a low long lens (a real person's walk, CMU 35_01), stops, stares at us, takes the whistle off his chest and blows it.
+  - `judge_scores`: two-shot, the judge at his desk across the track while Rupert does a real cheat run past in the foreground; head follows him, card up, head shake. Pogo 2, T-rex 1, superhero gallop 0 (`--cards cheat:card,...`).
+  - `final100`: Rupert's real 15.2 s run from five cameras: low in front off the start, rail cam, long-lens head-on, 4x slow-motion finish with the race clock stopping at 15.2, and the judge's slow card raise (halfway... pause... 10).
+  - `race`: Rupert's real final run against the world-record sprinter in lane 4, at Bolt's real 10 m splits, 41 steps. Freeze at frame 480 (9.58 s): Rupert is at 60.0 m. Two cameras: high wide side, low wide at the line.
+  - `zap`: the electrocution gag (lightning, X-ray skeleton flashes, hair on end, soot, smoke, topples over stiff).
+  - `preview`: series preview, bike / candlelit date (night) / trading desk.
+  - `outro`: wide to close on Rupert past the finish waving, then he falls flat on his face (cut before the fall to end on the wave). `subscribe`: the judge turns his 10 round: SUBSCRIBE.
 - Honesty notes:
   - The attempt #1 clips keep the physics going after the attempt officially ended (on his knees), so he finishes falling. The brain and the moves are unchanged.
+  - The sprinter is our animation moving at Bolt's published split times. Not a recording of Bolt. Don't show the splits on screen as official.
+  - The judge's walk is a real person's walk (CMU motion capture), on the judge's body.
   - The judge clips are real people's movements on Rupert's body, not Rupert. Say so on screen.

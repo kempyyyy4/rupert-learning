@@ -57,11 +57,13 @@ def _flat_poly(name, pts, mat, coll, to3d):
     return H.mesh_object(name, bm, mat, coll, smooth=False)
 
 
-def build_board(coll, loc, digit_h=0.42, name="attempts_board"):
-    """Free-standing LED board facing the -y side (the cameras). loc = bottom-centre of the panel."""
+def build_board(coll, loc, digit_h=0.42, name="attempts_board", label="ATTEMPTS", n_digits=N_DIGITS, point_after=None):
+    """Free-standing LED board facing the -y side (the cameras). loc = bottom-centre of the panel.
+    point_after: a lit decimal point after that many digits (a race clock: 3 digits, point after 2)."""
     dw, dh, t, sp = digit_h * 0.55, digit_h, digit_h * 0.125, digit_h * 0.17
     pitch = digit_h * 0.065
     pad = digit_h * 0.3
+    N_DIGITS = n_digits
     inner_w = N_DIGITS * dw + (N_DIGITS - 1) * sp
     w = inner_w + 2 * pad
     h = pad + 7 * pitch + digit_h * 0.25 + dh + pad
@@ -78,9 +80,8 @@ def build_board(coll, loc, digit_h=0.42, name="attempts_board"):
         return Vector((x0 + px, face_y, z0 - py))
 
     mat = _led_material()
-    board = {"digits": []}
+    board = {"digits": [], "n": N_DIGITS}
     # label: lit dots and faint unlit grid
-    label = "ATTEMPTS"
     lx = (w - led.text_width(label, pitch)) / 2
     ly = pad
     lit = set(led.dot_positions(label, lx, ly, pitch))
@@ -105,6 +106,11 @@ def build_board(coll, loc, digit_h=0.42, name="attempts_board"):
         for seg, poly in led.segment_polygons(dx, dy, dw, dh, t).items():
             segs[seg] = _flat_poly(f"{name}_d{i}_{seg}", poly, mat, coll, to3d)
         board["digits"].append(segs)
+        if point_after == i + 1:                     # decimal point, always lit
+            cx, cy, r = dx + dw + sp * 0.45, dy + dh - t * 0.5, t * 0.55
+            bm = bmesh.new()
+            bmesh.ops.create_circle(bm, cap_ends=True, segments=12, radius=r, matrix=_disc_matrix(to3d(cx, cy)))
+            H.mesh_object(f"{name}_point", bm, mat, coll, smooth=False).color = (1, 1, 1, 1)
     return board
 
 
@@ -119,7 +125,9 @@ def set_number(board, frame, number):
     prefs = bpy.context.preferences.edit
     old = prefs.keyframe_new_interpolation_type
     prefs.keyframe_new_interpolation_type = "CONSTANT"
-    for ch, segs in zip(led.digits_for(number, N_DIGITS), board["digits"]):
+    n = board.get("n", N_DIGITS)
+    shown = str(int(number)).rjust(board.get("min_digits", 1), "0")[-n:].rjust(n)    # clock: 0.5, not  .5
+    for ch, segs in zip(shown, board["digits"]):
         for seg, obj in segs.items():
             obj.color = (1, 1, 1, 1) if seg in led.SEGMENTS[ch] else (0, 0, 0, 1)
             obj.keyframe_insert("color", frame=frame)

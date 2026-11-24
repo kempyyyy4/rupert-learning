@@ -4,6 +4,7 @@
 
 - **Source:** CMU Graphics Lab Motion Capture Database, http://mocap.cs.cmu.edu
 - **Trials:** subjects 9, 16 and 35, straight running and jogging; the list is in `rupert/mocap.py`.
+- **Walking (`walk_reference.npz`):** subject 35, trials 35_01–35_03 (straight walks), fitted the same way (`retarget.fit_trial`). Used for the judge's walk-in in EP01. Same credit applies.
 - **Credit (required wording, for the video description):** "The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217."
 - **Licence:** the data may be used in commercial products, but may not be resold, even converted. Raw files (`cmu/`) are kept out of git.
 

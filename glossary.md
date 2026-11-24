@@ -69,7 +69,9 @@ Plain-English meanings. Claude adds to this whenever a new term comes up.
 - **Muscle activation (switch-on delay)**: real muscles can't go from relaxed to full force instantly; it takes a few hundredths of a second, and longer to relax again. Rupert's muscles now do the same (body v2).
 - **Body version**: which set of body numbers (strength, muscle speed) a run used. v1 = strong and instant (up to EXP-007); v2 = an ordinary young man.
 - **Cadence**: steps per second. Elite sprinters manage about 4.5-5; EXP-007 Rupert did 6+, a sign his body was unrealistic.
-- **Motion capture (mocap)**: recording a real person's movement with markers and cameras, so you get their exact joint positions frame by frame. We use free recordings of people running from Carnegie Mellon University (CMU).
+- **Motion capture (mocap)**: recording a real person's movement with markers and cameras, so you get their exact joint positions frame by frame. We use free recordings of people running from Carnegie Mellon University (CMU). The judge's walk-in uses a CMU walking recording too.
+- **Split times**: a sprinter's time at every 10 m of a race. Our world-record sprinter's position follows Bolt's 2009 splits, so he's in the right place at every moment, even though his body movement is our own animation.
+- **Two-shot**: one camera angle with two characters in it, e.g. the judge at his desk with Rupert running past in front.
 - **Retargeting**: fitting a recording of one body onto a different body (here, CMU runners onto Rupert, who has different proportions).
 - **Style judge (discriminator, AMP)**: a second AI that watches real runners and Rupert, and tries to tell which is which. Rupert gets points for fooling it. Both keep improving: as Rupert looks more human, the judge gets pickier. AMP stands for Adversarial Motion Priors.
 - **Reference state initialisation**: starting some practice attempts mid-stride in a real runner's pose, so Rupert experiences what running feels like early on.

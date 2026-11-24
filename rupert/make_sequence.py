@@ -333,6 +333,364 @@ def teacher(scale, draft=False, board="points"):
     render(blend, "cam_teacher", 1, n, OUT / f"teacher_{board}{tag}.mp4", scale=scale, draft=draft)
 
 
+def _save(npz, xp, xq, names):
+    np.savez(npz, xpos=xp[:, None], xquat=xq[:, None], alive=np.ones((len(xp), 1), bool),
+             body_names=np.array(names), fps=np.array(FPS))
+
+
+def _follow_keys(xp, names, body, every, off, aim_off, lens, ease_aim=None):
+    """Camera keys every `every` frames: camera at body + off, aimed at body + aim_off."""
+    b = names.index(body)
+    keys = []
+    for f in list(range(0, len(xp), every)) + [len(xp) - 1]:
+        p = xp[f, b]
+        a = aim_off(f) if callable(aim_off) else aim_off
+        o = off(f) if callable(off) else off
+        keys.append([f + 1, [float(p[0] + o[0]), float(p[1] + o[1]), float(p[2] + o[2])],
+                     [float(p[0] + a[0]), float(p[1] + a[1]), float(p[2] + a[2])], lens])
+    return keys
+
+
+def judge_walk(scale, draft=False):
+    """The judge walks in down the track towards a low long-lens camera, stops, stares into the
+    lens and blows his whistle (a real person's walk from CMU, hand animation for the whistle)."""
+    from rupert import poses
+    xp, xq, names, beats = poses.judge_walk_in()
+    npz = OUT / "judge_walk_in.npz"
+    _save(npz, xp, xq, names)
+    n = len(xp)
+    h = names.index("head")
+    stop_x = float(xp[beats["stop"] - 1, h, 0])
+    cam_x = stop_x - 3.9
+    keys = []
+    for f in list(range(0, n, 10)) + [n - 1]:
+        u = poses._ease(f / beats["stop"])
+        hx, hy, hz = (float(v) for v in xp[f, h])
+        aim_z = 1.05 + u * (hz - 0.12 - 1.05)            # whole body at first, then his face
+        keys.append([f + 1, [cam_x - 0.5 * (1 - u) - 0.25 * f / n, -0.25, 1.38], [hx, hy, aim_z], 85])
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({
+        "cameras": [{"name": "cam_walk", "fstop": 2.0, "keys": keys}], "camera": "cam_walk",
+        "whistle": {"grab": beats["grab"] + 1, "mouth": beats["blow"] + 1}}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "THE JUDGE", extra=["--character", "judge", "--no-desk", "--props", props])
+    tag = "_draft" if draft else ""
+    render(blend, "cam_walk", 1, n, OUT / f"judge_walk_in{tag}.mp4", scale=scale, draft=draft)
+    print("beats (frame):", beats)
+
+
+CHEATS = {   # name: (run, check-in step, seconds into test attempt 0 that the cheat clips use)
+    "pogo": ("rupert_20261106_2121", 101253120, 4.0),
+    "trex": ("rupert_20261107_1323", 875888640, 4.0),
+    "gallop": ("rupert_20261107_2130", 757923840, 4.0),
+    "straight_legs": ("rupert_20261106_2220", 345047040, 8.0),
+    "knees": ("rupert_20261107_1159", 728432640, 6.0),
+}
+JUDGE_SIDE_Y = 7.55          # judge's chair on the far verge, in front of the stand, facing the track (-y)
+
+
+def _cast_file(npz, cast):
+    f = npz.with_suffix(".cast.json")
+    f.write_text(json.dumps(cast))
+    return f
+
+
+def judge_scores(scale, draft=False, cheat="pogo", card="2", seconds=5.0, pass_at=1.4):
+    """A two-shot: the judge at his desk across the track (crowd behind him) while Rupert does his
+    real cheat run past the camera in the foreground (out of focus). The judge's head follows him,
+    then up goes the card, and a slow head shake. The cards are for fun, not real scores."""
+    from rupert import poses
+    run, step, start = CHEATS[cheat]
+    z = np.load(ROOT / "outputs" / run / "eval" / f"step_{step:013d}.npz")
+    names = [str(b) for b in z["body_names"]]
+    xp_all, xq_all = z["xpos"][:, 0], z["xquat"][:, 0]
+    torso = names.index("torso")
+    a0 = int(start * FPS)
+    # the desk: between two distance signs, where Rupert is a little after the shot starts
+    xj = float(np.floor(xp_all[a0 + int(pass_at * FPS), torso, 0] / 10) * 10 + 5)
+    k = int(np.argmax(xp_all[:, torso, 0] >= xj))       # frame he passes the desk
+    a = max(0, k - int(pass_at * FPS))
+    n = int(seconds * FPS)
+    xp, xq = xp_all[a:a + n], xq_all[a:a + n]
+    if len(xp) < n:
+        xp = np.concatenate([xp, np.repeat(xp[-1:], n - len(xp), 0)]); xq = np.concatenate([xq, np.repeat(xq[-1:], n - len(xq), 0)])
+    stem = OUT / f"judge_scores_{cheat}"
+    npz = stem.with_suffix(".npz")
+    _save(npz, xp, xq, names)
+    card_up = pass_at + 1.0
+    jp, jq, jn = poses.judge_watching((xj, JUDGE_SIDE_Y), -90.0, xp[:, names.index("head")],
+                                      card_up_at=card_up, shake_at=card_up + 0.9)
+    jnpz = OUT / f"judge_scores_{cheat}_judge.npz"
+    _save(jnpz, jp, jq, jn)
+    cast = _cast_file(npz, [{"replay": str(jnpz.resolve()), "character": "judge", "prefix": "judge", "desk": True,
+                             "yaw": -90.0, "cards": [{"text": card, "from": int(card_up * FPS) + 1, "face_yaw": -90.0}]}])
+    cam = {"name": "cam_two_shot", "fstop": 2.0, "keys": [     # long lens: judge waist-up, Rupert a blur
+        [1, [xj - 0.3, -6.5, 1.3], [xj, JUDGE_SIDE_Y - 0.3, 1.22], 135],
+        [n, [xj + 0.3, -6.2, 1.3], [xj, JUDGE_SIDE_Y - 0.3, 1.22], 135]]}
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_two_shot"}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "THE JUDGE", extra=["--cast", cast, "--props", props])
+    tag = "_draft" if draft else ""
+    render(blend, "cam_two_shot", 1, n, OUT / f"judge_scores_{cheat}_{card}{tag}.mp4", scale=scale, draft=draft)
+
+
+FINAL = ("rupert_20261112_1312", 846397440, 4)      # EXP-010, the 15.2 s run (test attempt 4)
+
+
+def final_run(seconds=None):
+    run, step, i = FINAL
+    z = np.load(ROOT / "outputs" / run / "eval" / f"step_{step:013d}.npz")
+    n = len(z["xpos"]) if seconds is None else int(seconds * FPS)
+    return z["xpos"][:n, i], z["xquat"][:n, i], [str(b) for b in z["body_names"]]
+
+
+def race(scale, draft=False, seconds=10.6, cams="race_wide,race_finish"):
+    """Rupert's real final run against a world-record sprinter in the next lane, moving at Bolt's
+    real Berlin 2009 split times (rupert/sprint.py). Freeze-frame point: when the sprinter
+    crosses the line (9.58 s), printed below."""
+    from rupert import sprint
+    xp, xq, names = final_run(seconds)
+    npz = OUT / "race.npz"
+    _save(npz, xp, xq, names)
+    sp, sq, sn = sprint.sprinter(seconds=seconds)
+    snpz = OUT / "race_sprinter.npz"
+    _save(snpz, sp, sq, sn)
+    n = len(xp)
+    pel = names.index("pelvis")
+    line = int(round(sprint.SPLITS[-1] * FPS))
+    print(f"  sprinter crosses the line at frame {line + 1} (9.58 s): Rupert is at {xp[line, pel, 0]:.1f} m")
+    cast = _cast_file(npz, [{"replay": str(snpz.resolve()), "character": "sprinter", "prefix": "sprinter"}])
+    mid = lambda f: (xp[f, pel, 0] + sp[f, pel, 0]) / 2
+    keys_wide = []
+    for f in list(range(0, n, 10)) + [n - 1]:
+        gap = sp[f, pel, 0] - xp[f, pel, 0]
+        c = float(mid(f))
+        dist = 14 + 0.75 * gap                            # pulls back as the gap opens
+        keys_wide.append([f + 1, [c - 0.1 * dist, -dist, 2.0 + 0.18 * dist], [c, 0.6, 0.9], 35])
+    # low, 12 m past the line, looking back up the track: the sprinter big at the line, Rupert small but
+    # clearly there 40 m behind (a long lens squashed the gap; a wide one lost Rupert altogether)
+    finish = [[1, [112.0, 2.6, 0.9], [80.0, 0.4, 0.95], 50], [n, [112.0, 2.6, 0.9], [80.0, 0.4, 0.95], 50]]
+    cams_spec = [{"name": "cam_race_wide", "fstop": 8.0, "keys": keys_wide},
+                 {"name": "cam_race_finish", "fstop": 11.0, "keys": finish}]
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": cams_spec, "camera": "cam_race_wide"}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "THE RACE", extra=["--cast", cast, "--props", props])
+    tag = "_draft" if draft else ""
+    for cam in cams.split(","):
+        render(blend, f"cam_{cam}", 1, n, OUT / f"{cam}{tag}.mp4", scale=scale, draft=draft)
+
+
+JUDGE_FINISH_X = 106.5       # the judge's desk on the far verge, just past the line
+
+
+def final100(scale, draft=False, seconds=19.0, cams="start_low,rail,head_on,finish_slowmo,judge_ten"):
+    """The cinematic 100 m: Rupert's real final run (EXP-010, 15.2 s) from five cameras, in one
+    scene with the trackside race clock and the judge at his desk past the finish line. He follows
+    Rupert with his head, then slowly raises his card... 10. Each camera renders its own clip."""
+    from rupert import poses
+    xp, xq, names = final_run(seconds)
+    n = len(xp)
+    npz = OUT / "final100.npz"
+    _save(npz, xp, xq, names)
+    torso = names.index("torso")
+    cross = int(np.argmax(xp[:, torso, 0] >= 100.0))         # frame index he reaches the line
+    print(f"  Rupert reaches the line at {cross / FPS:.2f} s (frame {cross + 1}); the clock stops at 15.2")
+    card_up = cross / FPS + 1.6
+    jp, jq, jn = poses.judge_watching((JUDGE_FINISH_X, JUDGE_SIDE_Y), -90.0, xp[:, names.index("head")],
+                                      card_up_at=card_up, slow=True)
+    jnpz = OUT / "final100_judge.npz"
+    _save(jnpz, jp, jq, jn)
+    cast = _cast_file(npz, [{"replay": str(jnpz.resolve()), "character": "judge", "prefix": "judge", "desk": True,
+                             "yaw": -90.0, "cards": [{"text": "10", "from": int(card_up * FPS) + 1, "face_yaw": -90.0}]}])
+    clock = [[f + 1, min(int((f / FPS) * 10), 151)] for f in range(cross)] + [[cross + 1, 152]]
+    clock = [c for k, c in enumerate(clock) if k == 0 or c[1] != clock[k - 1][1]]
+    T = lambda f: xp[min(f, n - 1), torso]
+    cams_spec = []
+    # 1. low and in front off the start: he drives up at the lens
+    keys = []
+    for f in list(range(0, 200, 5)):
+        p = T(f); u = f / 200
+        keys.append([f + 1, [float(p[0] + 3.2 - 1.4 * u), -0.7, 0.32], [float(p[0]), 0.0, float(p[2] - 0.55)], 24])
+    cams_spec.append({"name": "cam_start_low", "fstop": 2.8, "keys": keys})
+    # 2. rail cam beside him at full speed
+    keys = []
+    for f in range(150, 460, 5):
+        p = T(f)
+        keys.append([f + 1, [float(p[0] + 0.4), -4.3, 0.95], [float(p[0] + 0.4), 0.0, float(p[2] - 0.45)], 40])
+    cams_spec.append({"name": "cam_rail", "fstop": 2.8, "keys": keys})
+    # 3. long lens head-on from way past the finish: the lens zooms so he stays the same size
+    keys = []
+    for f in range(400, min(n, cross + 20), 5):
+        p = T(f); dist = 160.0 - p[0]
+        keys.append([f + 1, [160.0, 0.2, 1.35], [float(p[0]), 0.0, float(p[2] - 0.4)], float(np.clip(dist * 8.0, 100, 1200))])
+    cams_spec.append({"name": "cam_head_on", "fstop": 5.6, "keys": keys})
+    # 4. side on at the line, for the slow-motion finish (clock, FINISH sign and judge behind)
+    cams_spec.append({"name": "cam_finish_slowmo", "fstop": 4.0, "keys": [
+        [1, [100.4, -7.5, 0.85], [100.0, 2.0, 1.05], 38], [n, [100.4, -7.5, 0.85], [100.0, 2.0, 1.05], 38]]})
+    # 5. the judge: Rupert crosses in the foreground, then... the card
+    cams_spec.append({"name": "cam_judge_ten", "fstop": 2.0, "keys": [
+        [1, [JUDGE_FINISH_X - 0.3, -6.5, 1.3], [JUDGE_FINISH_X, JUDGE_SIDE_Y - 0.3, 1.22], 135],
+        [n, [JUDGE_FINISH_X + 0.3, -6.1, 1.3], [JUDGE_FINISH_X, JUDGE_SIDE_Y - 0.3, 1.22], 135]]})
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": cams_spec, "camera": "cam_rail",
+                                 "clock": {"loc": [95.8, JUDGE_SIDE_Y, 0.25], "digit_h": 0.62, "frames": clock}}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "FINAL RUN", extra=["--cast", cast, "--props", props])
+    tag = "_draft" if draft else ""
+    ranges = {"start_low": (1, 200, 1), "rail": (150, 460, 1), "head_on": (400, min(n, cross + 20), 1),
+              "finish_slowmo": (cross - 45, cross + 35, 4), "judge_ten": (cross - 60, min(n, int((card_up + 3.2) * FPS)), 1)}
+    for cam in cams.split(","):
+        f0, f1, slow = ranges[cam]
+        render(blend, f"cam_{cam}", f0, f1, OUT / f"final100_{cam}{tag}.mp4", slowmo=slow, scale=scale, draft=draft)
+
+
+XRAY_PASS = ("\nbpy.data.collections['rupert'].hide_render=True; bpy.data.collections['stadium'].hide_render=True"
+             "\nbpy.data.collections['xray'].hide_render=False"
+             "\nw=bpy.data.worlds.new('xray'); w.use_nodes=True"
+             "\nw.node_tree.nodes['Background'].inputs[0].default_value=(0.01,0.03,0.14,1); s.world=w"
+             "\nfor o in s.objects:\n    o.hide_render = o.hide_render or o.type=='LIGHT'")
+
+
+def zap(scale, draft=False):
+    """'He gets electrocuted when he does something bad': Rupert on the start line gets zapped.
+    Lightning, X-ray skeleton flashes, then hair on end, soot, smoke, and he topples over stiff."""
+    from PIL import Image  # noqa: F401  (imageio below needs the frames as files)
+    from rupert import poses
+    xp, xq, names, beats = poses.zapped()
+    npz = OUT / "zap.npz"
+    _save(npz, xp, xq, names)
+    n = len(xp)
+    f0, f1 = beats["zap"] + 1, beats["zap_end"] + 1
+    cam = {"name": "cam_zap", "fstop": 4.0, "keys": [
+        [1, [3.4, -2.5, 1.35], [0.0, 0.0, 1.05], 32],
+        [f0, [3.3, -2.45, 1.35], [0.0, 0.0, 1.05], 32],
+        [f0 + 3, [3.05, -2.25, 1.4], [0.0, 0.0, 1.2], 32],        # a jolt in as it hits (room for his arms)
+        [beats["fall"], [3.0, -2.2, 1.4], [0.0, 0.0, 1.2], 32],
+        [n, [3.6, -2.6, 1.5], [-0.6, 0.0, 0.5], 32]]}             # follows him down
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_zap", "zap": {"start": f0, "end": f1}}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "OUCH", extra=["--props", props])
+    tag = "_draft" if draft else ""
+    out = OUT / f"zap{tag}.mp4"
+    w, h = (640, 360) if draft else (1920 * scale // 100, 1080 * scale // 100)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        base = (f"import bpy; s=bpy.context.scene; s.render.resolution_percentage={scale}; "
+                f"s.camera=s.objects['cam_zap']" + (DRAFT if draft else ""))
+        run([BLENDER, "-b", blend, "--python-expr", base, "-o", tmp / "f_####", "-s", 1, "-e", n, "-a"])
+        run([BLENDER, "-b", blend, "--python-expr", base + XRAY_PASS, "-o", tmp / "x_####", "-s", f0, "-e", f1, "-a"])
+        for f in range(f0, f1):
+            if ((f - f0) // 2) % 2 == 1:                      # every other pair of frames: the X-ray
+                shutil.copyfile(tmp / f"x_{f:04d}.png", tmp / f"f_{f:04d}.png")
+        run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-framerate", FPS, "-start_number", 1,
+             "-i", tmp / "f_%04d.png", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", out])
+    print(f"Saved {out}  (zap frames {f0}-{f1}, falls at {beats['fall'] + 1})", flush=True)
+
+
+def outro(scale, draft=False):
+    """Bookends the opening: wide on Rupert just past the finish, push in to his face while he gives
+    a big wave... then he falls flat on his face (cut before it if you'd rather end on the wave)."""
+    from rupert import poses
+    xp, xq, names, beats = poses.outro()
+    npz = OUT / "outro.npz"
+    _save(npz, xp, xq, names)
+    n = len(xp)
+    hx, hy, hz = (float(v) for v in xp[0, names.index("head")])
+    off = lambda dx, dy, dz: [hx + dx, hy + dy, hz + dz]
+    push = int(3.6 * FPS)
+    cam = {"name": "cam_outro", "fstop": 2.8, "keys": [            # he faces -x: camera on the -x side
+        [1, off(-7.8, -2.36, 0.2), off(-0.4, 0, -0.6), 32],
+        [push, off(-2.5, -0.65, 0.0), off(0, 0, -0.05), 40],
+        [beats["fall"], off(-2.4, -0.62, 0.0), off(0, 0, -0.05), 40],
+        [beats["fall"] + 22, off(-3.0, -0.9, -0.5), off(-1.0, 0, -1.45), 35],   # tilts down as he comes over
+        [n, off(-3.1, -0.95, -0.55), off(-1.0, 0, -1.5), 35]]}                # his face in the track
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_outro"}))
+    blend = npz.with_suffix(".blend")
+    build(npz, blend, 1, "THANKS FOR WATCHING", extra=["--props", props])
+    tag = "_draft" if draft else ""
+    render(blend, "cam_outro", 1, n, OUT / f"outro_wave{tag}.mp4", scale=scale, draft=draft)
+    print(f"  he starts to fall at {beats['fall'] / FPS:.1f} s (frame {beats['fall'] + 1}): cut there to end on the wave")
+
+
+def subscribe(scale, draft=False):
+    """The judge gets the last word: he holds up his 10... and turns it round. SUBSCRIBE."""
+    from rupert import poses
+    xj = JUDGE_FINISH_X
+    jp, jq, jn = poses.judge_subscribe((xj, JUDGE_SIDE_Y))
+    npz = OUT / "judge_subscribe.npz"
+    _save(npz, jp, jq, jn)
+    n = len(jp)
+    flip = int(2.2 * FPS)
+    cast = _cast_file(npz, [{"replay": str(npz.resolve()), "character": "judge", "prefix": "judge", "desk": True,
+                             "yaw": -90.0, "cards": [{"text": "10", "from": 1, "face_yaw": -90.0,
+                                                      "back": "SUBSCRIBE", "flip": flip}]}])
+    # the scene needs a main character: Rupert, out of shot, waving at the finish
+    xp, xq, names, _ = poses.outro()
+    rnpz = OUT / "judge_subscribe_rupert.npz"
+    _save(rnpz, xp[:n], xq[:n], names)
+    cam = {"name": "cam_subscribe", "fstop": 2.8, "keys": [
+        [1, [xj, JUDGE_SIDE_Y - 3.4, 1.3], [xj, JUDGE_SIDE_Y, 1.35], 50],
+        [n, [xj, JUDGE_SIDE_Y - 2.9, 1.3], [xj, JUDGE_SIDE_Y, 1.38], 50]]}
+    props = npz.with_suffix(".props.json")
+    props.write_text(json.dumps({"cameras": [cam], "camera": "cam_subscribe"}))
+    blend = npz.with_suffix(".blend")
+    build(rnpz, blend, 1, "SUBSCRIBE", extra=["--cast", cast, "--props", props])
+    tag = "_draft" if draft else ""
+    render(blend, "cam_subscribe", 1, n, OUT / f"judge_subscribe{tag}.mp4", scale=scale, draft=draft)
+
+
+def preview(scale, draft=False, which="bike,date,trading"):
+    """'Coming up in this series': Rupert on a bike, on a date, and at a trading desk (2-3 s each)."""
+    from rupert import previews as P
+    tag = "_draft" if draft else ""
+    for kind in which.split(","):
+        npz = OUT / f"preview_{kind}.npz"
+        spec = {}
+        if kind == "bike":
+            xp, xq, names, keys = P.bike()
+            spec["bike"] = {"keys": keys, "wheel_r": P.WHEEL_R, "crank": list(P.CRANK), "crank_l": P.CRANK_L,
+                            "saddle": list(P.SADDLE), "bars": list(P.BARS), "wheelbase": list(P.WHEELBASE)}
+            n = len(xp)
+            keys_c = []
+            for f in list(range(0, n, 10)) + [n - 1]:             # tracking alongside, 3/4 from the front
+                x = keys[f][0][0]
+                keys_c.append([f + 1, [x + 3.3, -2.9, 1.25], [x + 0.2, 0.0, 0.95], 35])
+            cam = {"name": "cam_preview", "fstop": 2.8, "keys": keys_c}
+            screen_text = "COMING SOON"
+        elif kind == "date":
+            xp, xq, names = P.date()
+            n = len(xp)
+            x, y = P.TABLE
+            spec["date"] = {"table": list(P.TABLE), "table_h": P.TABLE_H, "frames": n}
+            spec["night"] = True
+            cam = {"name": "cam_preview", "fstop": 2.0, "keys": [            # the date's point of view
+                [1, [x + 1.55, y - 0.45, 1.35], [x - 0.45, y, 0.98], 30],
+                [n, [x + 1.35, y - 0.4, 1.33], [x - 0.45, y, 1.0], 30]]}
+            screen_text = "TABLE FOR TWO"
+        else:
+            xp, xq, names = P.trading()
+            n = len(xp)
+            x, y = P.DESK
+            images = [P.chart_frames(OUT / f"preview_trading_screen{k}", n, kind=kd, seed=k)
+                      for k, kd in enumerate(("candles", "line", "tickers"))]
+            spec["trading"] = {"desk": list(P.DESK), "frames": n, "images": [str(i.resolve()) for i in images]}
+            cam = {"name": "cam_preview", "fstop": 2.8, "keys": [            # over his shoulder at the screens
+                [1, [x - 1.9, y - 1.5, 1.6], [x + 0.2, y + 0.05, 1.05], 32],
+                [n, [x - 1.6, y - 1.25, 1.55], [x + 0.2, y + 0.05, 1.08], 32]]}
+            screen_text = "TO THE MOON"
+        _save(npz, xp, xq, names)
+        spec.update({"cameras": [cam], "camera": "cam_preview"})
+        props = npz.with_suffix(".props.json")
+        props.write_text(json.dumps(spec))
+        blend = npz.with_suffix(".blend")
+        build(npz, blend, 1, screen_text, extra=["--props", props])
+        render(blend, "cam_preview", 1, n, OUT / f"preview_{kind}{tag}.mp4", scale=scale, draft=draft)
+
+
 def timelapse(scale):
     """Fixed wide shot of the start line. Attempt after attempt from successive check-ins, at double speed,
     while the counter spins up. Each new number rolls in over 0.3 s."""
@@ -600,7 +958,11 @@ def _ghost_render(blend, T, K, numbers, window, sub, camera, scale, out_fps, dra
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("shot", choices=["intro", "timelapse", "judge", "swarm", "montage", "ghost", "forgot",
-                                     "opening", "teacher"])
+                                     "opening", "teacher", "judge_walk", "judge_scores", "race", "final100",
+                                     "zap", "outro", "subscribe", "preview"])
+    ap.add_argument("--which", default="bike,date,trading", help="preview: bike, date, trading (comma separated)")
+    ap.add_argument("--cams", default=None, help="race: which cameras (race_wide, race_finish)")
+    ap.add_argument("--cards", default="pogo:2,trex:1,gallop:0", help="judge_scores: cheat:card, comma separated")
     ap.add_argument("--seconds", type=float, default=10.0, help="ghost: length of the shot")
     ap.add_argument("--chapter", default="cheat1_stands_still", help="for swarm/montage: see rupert/ep01_story.py")
     ap.add_argument("--scale", type=int, default=100, help="resolution percent of 1920x1080 (25 = quick test)")
@@ -626,6 +988,24 @@ def main():
             teacher(a.scale, draft=a.draft, board=board)
     elif a.shot == "opening":
         opening(a.scale, draft=a.draft)
+    elif a.shot == "judge_walk":
+        judge_walk(a.scale, draft=a.draft)
+    elif a.shot == "race":
+        race(a.scale, draft=a.draft, cams=a.cams or "race_wide,race_finish")
+    elif a.shot == "final100":
+        final100(a.scale, draft=a.draft)
+    elif a.shot == "zap":
+        zap(a.scale, draft=a.draft)
+    elif a.shot == "outro":
+        outro(a.scale, draft=a.draft)
+    elif a.shot == "preview":
+        preview(a.scale, draft=a.draft, which=a.which)
+    elif a.shot == "subscribe":
+        subscribe(a.scale, draft=a.draft)
+    elif a.shot == "judge_scores":
+        for spec in a.cards.split(","):
+            cheat, card = spec.split(":")
+            judge_scores(a.scale, draft=a.draft, cheat=cheat, card=card)
     else:
         {"intro": intro, "timelapse": timelapse, "judge": judge, "forgot": forgot}[a.shot](a.scale)
 

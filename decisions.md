@@ -2,6 +2,14 @@
 
 Newest first. Each entry: what we decided, and why.
 
+## 2026-11-24
+- **Build all the missing EP01 shots as quick tests** (Tom: "build them"): judge walk-in, judge scoring cheats, cinematic 100 m with the judge's 10, the race, the zap gag, the series preview, the outro and SUBSCRIBE card.
+- **The judge walks in wearing his suit, with a whistle** (the 13 Nov call beats the script's older "coach in a tracksuit" line). His walk is a real person's (CMU walking recording 35_01, fitted onto the body like the runners); the whistle grab is hand animation.
+- **Judge scoring = a two-shot, not intercutting.** The judge sits at his desk on the far side of the track (crowd behind him) and Rupert does his real cheat run past the camera, out of focus in the foreground. One shot shows both the run and the verdict. Cards: pogo 2, T-rex 1, superhero gallop 0 (just for fun; the narration must not call them real scores).
+- **The world-record sprinter is our own sprint animation on Bolt's real splits.** His position follows the published 10 m splits exactly, and he takes 41 steps; each foot is planted on the track while it's down (legs solved exactly, no sliding). The leg drive goes 40° behind the hips, more than the training body allows: it's animation, and a sprinter needs it. Checked: when he crosses at 9.58 s, Rupert is at 60.0 m (as the script says).
+- **The race's finish camera is a low wide angle at the line, not a long lens.** A long lens squashed the 40 m gap until Rupert looked close behind, the opposite of the joke.
+- **The race clock in the finish shot shows 15.2** (Rupert's real time, all 8 test runs). It counts up in tenths from the gun and stops when he reaches the line.
+
 ## 2026-11-21
 - **Teacher Rupert boards 2–4 built** (brain, score graph, boat; quick tests in `renders/ep01_shots/tests/`). The score graph shows every real check-in as a thin line plus a bold "typical score" line, and labels the dips "bad days!". The 463M "forgot" dip is one of 12 similar drops, so singling it out would mislead.
 - **Teacher Rupert's whole body helps him point** (Tom: "his arm is a bit buggy... his body should lean"). The arm now stays inside its real joint limits; his waist twists and leans and he turns on his feet to reach, with his hips and feet planted. He stands at -115° (was -100°) so every spot is in reach (worst miss 1.3 cm). His head glances at the board as each point starts, then turns back to the camera.

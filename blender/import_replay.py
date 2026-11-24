@@ -82,7 +82,8 @@ def import_replay(path, attempt=0, prefix="rupert"):
 
     scene = bpy.context.scene
     scene.render.fps = fps
-    scene.frame_start, scene.frame_end = 1, max(scene.frame_end if attempt else 0, n_frames)
+    keep = attempt or prefix != "rupert"        # extra characters never shorten the shot
+    scene.frame_start, scene.frame_end = 1, max(scene.frame_end if keep else 0, n_frames)
 
     empties = {}
     coll = bpy.data.collections.new(f"{prefix}_replay_attempt{attempt}")

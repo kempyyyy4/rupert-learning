@@ -404,6 +404,9 @@ def main():
     ap.add_argument("--character", default="rupert", choices=["rupert", "judge", "runner"])
     ap.add_argument("--card", default=None, help="judge: score card text")
     ap.add_argument("--card-from", type=int, default=1, help="judge: frame the card appears")
+    ap.add_argument("--no-desk", action="store_true", help="judge: no desk (standing or walking)")
+    ap.add_argument("--cast", default=None, help="JSON list of extra characters, each with its own replay "
+                    "(character: rupert/judge/runner/sprinter, desk, cards)")
     ap.add_argument("--swarm", action="store_true", help="build a Rupert for EVERY attempt in the replay file")
     ap.add_argument("--timelapse", action="store_true", help="ghost timelapse: sun sweep, no motion blur, light sampling")
     ap.add_argument("--camera-cuts", default=None, help="JSON file of [frame, camera name]: switch cameras mid-shot")
@@ -433,12 +436,33 @@ def main():
     else:
         import characters
         characters.build_character(empties, rupert, args.character)
-        if args.character == "judge":
+        if args.character == "judge" and not args.no_desk:
             bpy.context.scene.frame_set(1)
             p = empties["pelvis"].matrix_world.translation
             characters.build_desk((p.x, p.y), rupert)
             if args.card:
                 characters.build_score_card(empties, rupert, args.card, args.card_from)
+    if args.cast:
+        import json
+        import characters
+        for i, c in enumerate(json.loads(Path(args.cast).read_text())):
+            prefix = c.get("prefix", f"cast{i}")
+            em = import_replay(c["replay"], 0, prefix=prefix)
+            coll = bpy.data.collections.new(prefix)
+            bpy.context.scene.collection.children.link(coll)
+            look = c.get("character", "rupert")
+            if look == "rupert":
+                build_rupert(em, coll, c.get("costume", "ep01_70s"))
+            else:
+                characters.build_character(em, coll, look)
+            if c.get("desk"):
+                bpy.context.scene.frame_set(1)
+                p = em["pelvis"].matrix_world.translation
+                characters.build_desk((p.x, p.y), coll, yaw_deg=c.get("yaw", 0.0))
+            for k, card in enumerate(c.get("cards", [])):
+                characters.build_score_card(em, coll, card["text"], card["from"], until=card.get("until"),
+                                            back=card.get("back"), flip=card.get("flip"), name=f"{prefix}_card{k}",
+                                            face_yaw_deg=card.get("face_yaw", -25.0))
     build_stadium(stadium, screen_text)
     y_far = lane_edge(N_LANES + 1)
     board = attempts_board.build_board(stadium, (-4.5, y_far + 1.0, 1.3), digit_h=0.8)

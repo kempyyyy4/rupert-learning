@@ -23,7 +23,10 @@ BLUE, WHITE = (0.03, 0.18, 0.75), (0.95, 0.95, 0.95)
 LOOKS = {
     "judge": dict(skin=(0.74, 0.55, 0.43), hair=GREY_HAIR, expression="determined"),
     "runner": dict(skin=(0.36, 0.22, 0.14), hair=(0.02, 0.015, 0.01), expression="determined"),
+    # the world-record sprinter in the race: yellow vest, green shorts, no name or logo anywhere
+    "sprinter": dict(skin=(0.24, 0.14, 0.085), hair=(0.015, 0.012, 0.01), expression="determined"),
 }
+YELLOW, GREEN, GOLD = (1.0, 0.78, 0.0), (0.0, 0.42, 0.16), (0.85, 0.62, 0.12)
 
 
 # ---- body, head and hair with this character's own materials ------------------------
@@ -154,8 +157,24 @@ def _blazer(body):
     bm_j.free()
 
 
-def build_desk(at, coll, label="JUDGE"):
-    """Judges' desk in front of a seated character whose pelvis is at `at` (world x, y), facing +x."""
+def build_desk(at, coll, label="JUDGE", yaw_deg=0.0):
+    """Judges' desk in front of a seated character whose pelvis is at `at` (world x, y), facing
+    +x turned by yaw_deg (90 = facing +y)."""
+    before = set(coll.objects)
+    _desk_parts(at, coll, label)
+    if yaw_deg:
+        root = bpy.data.objects.new("desk_root", None)
+        root.location = (at[0], at[1], 0.0)
+        coll.objects.link(root)
+        bpy.context.view_layer.update()
+        for o in set(coll.objects) - before - {root}:
+            if o.parent is None:
+                o.parent = root
+                o.matrix_parent_inverse = root.matrix_world.inverted()
+        root.rotation_euler = (0, 0, math.radians(yaw_deg))
+
+
+def _desk_parts(at, coll, label):
     x, y = at
     wood = H.material("desk_wood", (0.32, 0.17, 0.08), rough=0.45)
     panel = H.material("desk_panel", (0.9, 0.9, 0.88), rough=0.5)
@@ -172,16 +191,32 @@ def build_desk(at, coll, label="JUDGE"):
     H.box("card_stack", (0.22, 0.3, 0.03), (x + 0.75, y + 0.45, 0.745), H.material("card_white", (0.95, 0.95, 0.93), rough=0.6), coll)
 
 
-def build_score_card(empties, coll, score, show_from, face_yaw_deg=-25.0):
-    """A white score card with a big number, held in the right hand from frame `show_from`."""
-    card = H.box("score_card", (0.012, 0.32, 0.24), (0, 0, 0), H.material("card_white", (0.95, 0.95, 0.93), rough=0.6), coll, bevel=0.004)
-    num = H.text("score_number", score, (0.008, 0, 0), (90, 0, 90), 0.17, H.material("card_ink", (0.01, 0.01, 0.01), rough=0.8), coll, extrude=0.002)
+def build_score_card(empties, coll, score, show_from, face_yaw_deg=-25.0, until=None, back=None, flip=None,
+                     name="score_card"):
+    """A white score card with a big number, held in the right hand from frame `show_from`
+    (until frame `until`). back: text on the other side; flip: frame he turns it round (0.4 s)."""
+    card = H.box(name, (0.012, 0.42, 0.32), (0, 0, 0), H.material("card_white", (0.95, 0.95, 0.93), rough=0.6), coll, bevel=0.004)
+    ink = H.material("card_ink", (0.01, 0.01, 0.01), rough=0.8)
+    size = 0.32 if len(score) <= 2 else 0.32 * 2 / len(score)
+    num = H.text(f"{name}_number", score, (0.008, 0, 0), (90, 0, 90), size, ink, coll, extrude=0.002)
     num.parent = card
+    if back:
+        red = H.material("card_red", (0.8, 0.02, 0.02), rough=0.6)
+        size = min(0.25, 0.62 / max(1, len(back)))
+        b = H.text(f"{name}_back", back, (-0.008, 0, 0), (90, 0, -90), size, red, coll, extrude=0.002)
+        b.parent = card
     c = card.constraints.new("COPY_LOCATION")
     c.target, c.use_offset = empties["right_hand"], True
-    card.location = (0.0, -0.05, 0.16)         # just above the fist
+    card.location = (0.0, -0.05, 0.2)          # just above the fist
     card.rotation_euler = (0, 0, math.radians(face_yaw_deg))
-    for f, s in ((1, 0.0), (show_from, 0.0), (show_from + 8, 1.0)):
+    if flip:
+        for f, yaw in ((flip, face_yaw_deg), (flip + 20, face_yaw_deg + 180)):
+            card.rotation_euler = (0, 0, math.radians(yaw))
+            card.keyframe_insert("rotation_euler", frame=f)
+    keys = [(1, 1.0)] if show_from <= 1 else [(1, 0.0), (show_from, 0.0), (show_from + 8, 1.0)]
+    if until:
+        keys += [(until, 1.0), (until + 6, 0.0)]
+    for f, s in keys:
         card.scale = (s, s, s)
         card.keyframe_insert("scale", frame=f)
     return card
@@ -208,6 +243,12 @@ def build_character(empties, coll, look):
         costumes.trimmed_vest(body, BLUE, WHITE, name="runner_vest")
         costumes.loose_shorts(body, BLUE, WHITE, name="runner_shorts")
         costumes.running_shoes(body, WHITE, BLUE, BLUE, name="runner_shoe")
+    elif look == "sprinter":
+        _hair_patch(body, look, style["hair"], range(0, 360, 5), lambda a: R._hairline(a) + 4, lambda a: 89.5,
+                    out=0.004, thick=0.005, wrap=True)          # cropped close
+        costumes.trimmed_vest(body, YELLOW, GREEN, name="sprinter_vest")
+        costumes.loose_shorts(body, GREEN, YELLOW, name="sprinter_shorts")
+        costumes.running_shoes(body, GOLD, WHITE, WHITE, name="sprinter_shoe")
     for e in empties.values():
         e.hide_render = True
         e.hide_viewport = True

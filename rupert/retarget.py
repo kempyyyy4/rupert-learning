@@ -114,6 +114,25 @@ def fit_clip(m, d, mk, pelvis_target, toe_off, lengths, q_init, iters=50):
     return np.array(out), np.array(errs)
 
 
+def fit_trial(trial):
+    """Any one CMU recording (walk, run...) fitted onto Rupert: qpos per frame at 50 frames/s,
+    moving along +x from x = 0, feet on the floor."""
+    m = rupert_env.load().mj_model
+    d = mujoco.MjData(m)
+    toe_off = _toe_offsets(m)
+    leg = _rupert_leg_length(m, d)
+    lengths = rest_lengths(m, d, toe_off)
+    mk, skel = mocap.load_trial(trial, FPS)
+    s = leg / (skel.bones["lfemur"]["length"] + skel.bones["ltibia"]["length"])
+    pelvis = mk["root"] * s
+    qi = m.qpos0.copy(); qi[:3] = pelvis[0]
+    qs, err = fit_clip(m, d, mk, pelvis, toe_off, lengths, qi)
+    qs[:, 2] -= _ground_gap(m, d, qs)
+    print(f"{trial}: {len(qs) / FPS:.1f} s, {(qs[-1, 0] - qs[0, 0]) / (len(qs) / FPS):.2f} m/s, "
+          f"direction error mean {err.mean():.1f} deg", flush=True)
+    return qs
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--video", action="store_true", help="also render a check video")
