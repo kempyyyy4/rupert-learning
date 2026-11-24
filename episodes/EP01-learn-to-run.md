@@ -1,16 +1,16 @@
 # EP01 — Rupert learns to run
 
-**Status:** Planning
+**Status:** Editing (all shots rendered at full quality, 2026-11-24; Tom on script, voiceover and rough cut)
 
 ## Goal
 Rupert goes from collapsing to running, ending on his first 100m time trial. The gap to Bolt's 9.58 sets up EP02.
 
 ## Milestone 1 is done when
-- [ ] Rupert genuinely learns to run, with no pre-made animation anywhere
-- [ ] At least five distinct stages are captured as clips
-- [ ] The final run looks like running, not a hop or a crawl
-- [ ] Clips render at 1080p with the Rupert model on the track
-- [ ] Total cloud spend is under £15
+- [x] Rupert genuinely learns to run, with no pre-made animation anywhere
+- [x] At least five distinct stages are captured as clips
+- [x] The final run looks like running, not a hop or a crawl
+- [x] Clips render at 1080p with the Rupert model on the track
+- [x] Total cloud spend is under £15 (logged estimates EXP-004 to EXP-010: about £3–£9)
 
 ## Build steps
 1. ~~Set up the GitHub repo and the app skeleton~~ (done 2026-11-05; Tom confirmed install check and humanoid viewer work)
@@ -85,7 +85,7 @@ Tom's brief: "a cinematic masterpiece". Rewards must be properly explained.
 - All three share Rupert's skeleton and cartoon head style. The wave and the judge's poses are hand animation (`rupert/poses.py`), not physics.
 
 ## The counter
-A running total over all training, in story order (`rupert/ep01_story.py`), ending at **about 26 million attempts**. Cheat #1's footage comes from the start of EXP-006, standing in for the stock-setup run that wasn't saved. The cheat-reel clips still show per-run numbers, so re-render them with running totals before the edit.
+A running total over all training, in story order (`rupert/ep01_story.py`), ending at **about 26 million attempts**. Cheat #1's footage comes from the start of EXP-006, standing in for the stock-setup run that wasn't saved. The cheat clips in `renders/ep01_final/` show the running total (re-rendered in the weekend batch, with no-counter `_clean` versions too). The old per-run `renders/cheat_reel/` clips are superseded.
 
 ## Timelapse shots (per chapter, `python -m rupert.make_sequence swarm|montage --chapter <name>`)
 - **swarm:** 24 Ruperts practising at once, like real training: practice behaviour (randomness on), and each one restarts at the start line the moment his attempt ends. Three check-ins through the chapter, with cuts between them.
@@ -99,7 +99,7 @@ A running total over all training, in story order (`rupert/ep01_story.py`), endi
   - `intro_3_collapse_slowmo_4x.mp4`: the same fall in 4x slow motion, side view.
   - `timelapse_early_training.mp4`: fixed wide shot of the start line. 16 attempts from successive check-ins (EXP-009, 0 to 80M steps) at double speed, with the board and counter climbing from 1 to about 850,000. He goes from collapsing instantly to walking off.
   - `judge_real_runners.mp4`: the real runners the judge studied, fitted onto Rupert's body. Four play in full, then the other 22 flash by while a "REAL RUNNER" counter races to 26.
-- Hand-animated set pieces (2026-11-24, `python -m rupert.make_sequence <shot> [--draft]`; quick tests in `renders/ep01_shots/tests/`):
+- Hand-animated set pieces (2026-11-24, `python -m rupert.make_sequence <shot> [--draft]`; quick tests in `renders/ep01_shots/tests/`, full quality in `renders/ep01_shots/final/`, rendered 2026-11-24):
   - `judge_walk`: the judge walks in towards a low long lens (a real person's walk, CMU 35_01), stops, stares at us, takes the whistle off his chest and blows it.
   - `judge_scores`: two-shot, the judge at his desk across the track while Rupert does a real cheat run past in the foreground; head follows him, card up, head shake. Pogo 2, T-rex 1, superhero gallop 0 (`--cards cheat:card,...`).
   - `final100`: Rupert's real 15.2 s run from five cameras: low in front off the start, rail cam, long-lens head-on, 4x slow-motion finish with the race clock stopping at 15.2, and the judge's slow card raise (halfway... pause... 10).
